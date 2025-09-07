@@ -668,7 +668,7 @@ export default function App() {
             if (gameState === GameState.SOLAR_SYSTEM) {
                 if (event.code === 'Equal' || event.code === 'NumpadAdd') setSpeedMultiplier(s => Math.min(2.0, s + 0.25));
                 if (event.code === 'Minus' || event.code === 'NumpadSubtract') setSpeedMultiplier(s => Math.max(0.25, s - 0.25));
-                if (event.code === 'KeyM') switchToGalaxyMap();
+                // if (event.code === 'KeyM') switchToGalaxyMap();
             }
         };
         window.addEventListener('keydown', handleKeyPress);
@@ -752,7 +752,7 @@ export default function App() {
                             {isWarpingState && <p className="text-2xl text-cyan-400 animate-pulse">WARP DRIVE ACTIVE</p>}
                             <div className="text-lg mb-1.5">Ship: {currentShip?.name}</div>
                             <div className="text-sm">Mouse: Aim | W/S: Fwd/Back | A/D: Strafe | Space/Shift: Up/Down | Q/E: Roll | R/F: Pitch</div>
-                            <div className="text-sm">+/-: Change Speed Multiplier | Speed: {Math.round(speedMultiplier * 100)}% | 'M': Map</div>
+                            <div className="text-sm">+/-: Change Speed Multiplier | Speed: {Math.round(speedMultiplier * 100)}% | </div>
                         </div>
                     )}
 
