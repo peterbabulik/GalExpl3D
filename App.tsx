@@ -19,13 +19,15 @@ import {
     CraftingInterface,
     FittingInterface,
     ReprocessingInterface,
+    MarketInterface,
     StationInterface,
     NavPanel,
     ShipCargoUI,
     ShipStatsUI,
     SelectedTargetUI,
     UIButton,
-    MiningProgressIndicator
+    MiningProgressIndicator,
+    SystemInfoUI,
 } from './UI';
 import { ASTEROID_BELT_TYPES } from './ores';
 import { createAsteroidBelt } from './asteroids';
@@ -69,6 +71,7 @@ export default function App() {
     const [isCraftingOpen, setCraftingOpen] = useState(false);
     const [isFittingOpen, setFittingOpen] = useState(false);
     const [isReprocessingOpen, setReprocessingOpen] = useState(false);
+    const [isMarketOpen, setMarketOpen] = useState(false);
     const [isWarpingState, setIsWarpingState] = useState(false);
     const [miningState, setMiningState] = useState<MiningState | null>(null);
     const [miningTargetScreenPos, setMiningTargetScreenPos] = useState<{x: number, y: number, visible: boolean} | null>(null);
@@ -688,7 +691,7 @@ export default function App() {
     }, [miningState]);
 
     const currentShip = SHIP_DATA[playerState.currentShipId];
-    const isModalOpen = isShipHangarOpen || isItemHangarOpen || isCraftingOpen || isFittingOpen || isReprocessingOpen;
+    const isModalOpen = isShipHangarOpen || isItemHangarOpen || isCraftingOpen || isFittingOpen || isReprocessingOpen || isMarketOpen;
 
     const stationId = (gameState === GameState.DOCKED && activeSystemId && gameDataRef.current.dockedStation)
         ? getStationId(activeSystemId, gameDataRef.current.dockedStation.userData.name)
@@ -721,13 +724,15 @@ export default function App() {
 
             {isSolarSystemView && (
                 <>
-                    <div className="absolute top-2.5 left-2.5 z-10">
-                        <h1 className="text-2xl">{activeSystemName}</h1>
-                        {gameState === GameState.SOLAR_SYSTEM && <UIButton onClick={switchToGalaxyMap}>Navigation</UIButton>}
-                    </div>
+                    <SystemInfoUI
+                        systemName={activeSystemName}
+                        playerState={playerState}
+                        onNavClick={switchToGalaxyMap}
+                        isDocked={gameState === GameState.DOCKED}
+                    />
 
                     {gameState === GameState.SOLAR_SYSTEM && !isModalOpen && (
-                         <div className="absolute top-20 left-2.5 z-5 flex flex-col gap-4">
+                         <div className="absolute top-28 left-2.5 z-5 flex flex-col gap-4">
                             <ShipCargoUI cargo={playerState.shipCargo} />
                             <ShipStatsUI playerState={playerState} />
                         </div>
@@ -780,6 +785,7 @@ export default function App() {
                             onOpenItemHangar={() => setItemHangarOpen(true)}
                             onOpenFitting={() => setFittingOpen(true)}
                             onOpenReprocessing={() => setReprocessingOpen(true)}
+                            onOpenMarket={() => setMarketOpen(true)}
                         />
                     )}
 
@@ -798,6 +804,17 @@ export default function App() {
                             playerState={playerState} 
                             setPlayerState={setPlayerState} 
                             stationId={stationId} 
+                        />
+                    )}
+
+                    {isMarketOpen && stationId && activeSystemId && (
+                        <MarketInterface
+                            isOpen={isMarketOpen}
+                            onClose={() => setMarketOpen(false)}
+                            playerState={playerState}
+                            setPlayerState={setPlayerState}
+                            stationId={stationId}
+                            systemId={activeSystemId}
                         />
                     )}
                 </>

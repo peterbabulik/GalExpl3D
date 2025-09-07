@@ -75,6 +75,7 @@ export interface StorageLocation {
 }
 
 export interface PlayerState {
+    isk: number;
     currentShipId: string;
     currentShipFitting: ShipFitting;
     shipCargo: StorageLocation;
