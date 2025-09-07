@@ -81,7 +81,33 @@ export interface PlayerState {
     shipCargo: StorageLocation;
     assetHangar: StorageLocation;
     stationHangars: Record<string, StorageLocation>;
+    activeMissions: MissionData[];
 }
+
+
+// --- AGENTS & MISSIONS ---
+
+export interface AgentData {
+    id: string; // stationId
+    name: string;
+    corporation: string;
+    backstory: string;
+}
+
+export interface MissionData {
+    id: string; // e.g., stationId-agentName-missionTitle-timestamp
+    agent: AgentData;
+    stationId: string;
+    title: string;
+    description: string;
+    objectives: Record<string, number>; // e.g., { 'ore_veldspar': 5000 }
+    rewards: {
+        isk?: number;
+        items?: { id: string; quantity: number }[];
+    };
+    status: 'offered' | 'accepted';
+}
+
 
 // --- WORLD & CELESTIALS ---
 

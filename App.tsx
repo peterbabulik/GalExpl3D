@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
 import { GameState } from './types';
-import type { PlayerState, TooltipData, Target, TargetData, DockingData, NavObject, NavPanelItem, StorageLocation, Module, Ore } from './types';
+import type { PlayerState, TooltipData, Target, TargetData, DockingData, NavObject, NavPanelItem, StorageLocation, Module, Ore, AgentData, MissionData } from './types';
 import { 
     GALAXY_DATA,
     SOLAR_SYSTEM_DATA,
@@ -28,6 +28,8 @@ import {
     UIButton,
     MiningProgressIndicator,
     SystemInfoUI,
+    AgentInterface,
+    MissionTrackerUI
 } from './UI';
 import { ASTEROID_BELT_TYPES } from './ores';
 import { createAsteroidBelt } from './asteroids';
@@ -72,6 +74,7 @@ export default function App() {
     const [isFittingOpen, setFittingOpen] = useState(false);
     const [isReprocessingOpen, setReprocessingOpen] = useState(false);
     const [isMarketOpen, setMarketOpen] = useState(false);
+    const [isAgentInterfaceOpen, setAgentInterfaceOpen] = useState(false);
     const [isWarpingState, setIsWarpingState] = useState(false);
     const [miningState, setMiningState] = useState<MiningState | null>(null);
     const [miningTargetScreenPos, setMiningTargetScreenPos] = useState<{x: number, y: number, visible: boolean} | null>(null);
@@ -81,6 +84,10 @@ export default function App() {
     const [dockingData, setDockingData] = useState<DockingData>({ visible: false, distance: 0 });
     const [navPanelData, setNavPanelData] = useState<NavPanelItem[]>([]);
     
+    // Gemini-related state (cached data)
+    const [agents, setAgents] = useState<Record<string, AgentData>>({});
+    const [stationMissions, setStationMissions] = useState<Record<string, MissionData[]>>({});
+
     // --- REFS FOR THREE.JS & non-reactive data ---
     const mountRef = useRef<HTMLDivElement>(null);
     const threeRef = useRef<any>({}); // Using any to avoid complex THREE type management
@@ -195,6 +202,72 @@ export default function App() {
             return newState;
         });
     };
+
+    const handleAcceptMission = (mission: MissionData) => {
+        setPlayerState(p => {
+            const newState = JSON.parse(JSON.stringify(p));
+            // Avoid adding duplicate missions
+            if (!newState.activeMissions.some(m => m.id === mission.id)) {
+                const missionWithStatus = { ...mission, status: 'accepted' };
+                newState.activeMissions.push(missionWithStatus);
+            }
+            return newState;
+        });
+    };
+    
+    const handleCompleteMission = (missionId: string) => {
+        setPlayerState(p => {
+            const mission = p.activeMissions.find(m => m.id === missionId);
+            if (!mission) return p;
+            
+            const stationHangar = p.stationHangars[mission.stationId];
+            if (!stationHangar) return p;
+
+            // Check if objectives are met
+            for (const oreId in mission.objectives) {
+                const required = mission.objectives[oreId];
+                if ((stationHangar.materials[oreId] || 0) < required) {
+                    // This should be prevented by UI, but as a safeguard
+                    console.error("Not enough materials to complete mission.");
+                    return p;
+                }
+            }
+            
+            const newState = JSON.parse(JSON.stringify(p));
+            const newHangar = newState.stationHangars[mission.stationId];
+
+            // 1. Remove objective items
+            for (const oreId in mission.objectives) {
+                newHangar.materials[oreId] -= mission.objectives[oreId];
+                if (newHangar.materials[oreId] <= 0) {
+                    delete newHangar.materials[oreId];
+                }
+            }
+
+            // 2. Add rewards
+            if (mission.rewards.isk) {
+                newState.isk += mission.rewards.isk;
+            }
+            if (mission.rewards.items) {
+                mission.rewards.items.forEach(itemReward => {
+                    const itemData = getItemData(itemReward.id);
+                    if (itemData?.category === 'Ore' || itemData?.category === 'Mineral') {
+                        newHangar.materials[itemReward.id] = (newHangar.materials[itemReward.id] || 0) + itemReward.quantity;
+                    } else {
+                        for(let i=0; i < itemReward.quantity; i++) {
+                            newHangar.items.push(itemReward.id);
+                        }
+                    }
+                });
+            }
+
+            // 3. Remove mission from active list
+            newState.activeMissions = newState.activeMissions.filter(m => m.id !== missionId);
+
+            return newState;
+        });
+    };
+
 
     const handleSelectTarget = useCallback((uuid: string) => {
         const navObj = gameDataRef.current.navObjects.find(n => n.object3D.uuid === uuid);
@@ -693,11 +766,15 @@ export default function App() {
     }, [miningState]);
 
     const currentShip = SHIP_DATA[playerState.currentShipId];
-    const isModalOpen = isShipHangarOpen || isItemHangarOpen || isCraftingOpen || isFittingOpen || isReprocessingOpen || isMarketOpen;
+    const isModalOpen = isShipHangarOpen || isItemHangarOpen || isCraftingOpen || isFittingOpen || isReprocessingOpen || isMarketOpen || isAgentInterfaceOpen;
 
     const stationId = (gameState === GameState.DOCKED && activeSystemId && gameDataRef.current.dockedStation)
         ? getStationId(activeSystemId, gameDataRef.current.dockedStation.userData.name)
         : null;
+    
+    const stationName = (gameState === GameState.DOCKED && gameDataRef.current.dockedStation)
+        ? gameDataRef.current.dockedStation.userData.name
+        : '';
         
     const setTooltipContent = (content: string, event: React.MouseEvent) => {
         setTooltipData({ visible: true, content, x: event.clientX, y: event.clientY });
@@ -737,6 +814,7 @@ export default function App() {
                          <div className="absolute top-28 left-2.5 z-5 flex flex-col gap-4">
                             <ShipCargoUI cargo={playerState.shipCargo} />
                             <ShipStatsUI playerState={playerState} />
+                            <MissionTrackerUI playerState={playerState} />
                         </div>
                     )}
                     {gameState === GameState.SOLAR_SYSTEM && !isModalOpen && <NavPanel data={navPanelData} selectedTargetId={targetData.selectedTarget?.uuid || null} onSelectTarget={handleSelectTarget} />}
@@ -788,6 +866,7 @@ export default function App() {
                             onOpenFitting={() => setFittingOpen(true)}
                             onOpenReprocessing={() => setReprocessingOpen(true)}
                             onOpenMarket={() => setMarketOpen(true)}
+                            onOpenAgent={() => setAgentInterfaceOpen(true)}
                         />
                     )}
 
@@ -817,6 +896,23 @@ export default function App() {
                             setPlayerState={setPlayerState}
                             stationId={stationId}
                             systemId={activeSystemId}
+                        />
+                    )}
+                    
+                    {isAgentInterfaceOpen && stationId && activeSystemId && (
+                        <AgentInterface
+                            isOpen={isAgentInterfaceOpen}
+                            onClose={() => setAgentInterfaceOpen(false)}
+                            playerState={playerState}
+                            onAcceptMission={handleAcceptMission}
+                            onCompleteMission={handleCompleteMission}
+                            stationId={stationId}
+                            systemId={activeSystemId}
+                            stationName={stationName}
+                            cachedAgent={agents[stationId]}
+                            setCachedAgent={(agent) => setAgents(a => ({...a, [stationId]: agent}))}
+                            cachedMissions={stationMissions[stationId]}
+                            setCachedMissions={(missions) => setStationMissions(m => ({...m, [stationId]: missions}))}
                         />
                     )}
                 </>

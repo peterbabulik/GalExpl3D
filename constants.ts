@@ -246,6 +246,7 @@ export const INITIAL_PLAYER_STATE: PlayerState = {
             materials: {}
         }
     },
+    activeMissions: [],
 };
 
 const ALL_ITEM_DATA = {
