@@ -150,7 +150,7 @@ export const HangarModal: React.FC<{
     const ownedShips = stationHangar ? stationHangar.items.filter(id => id.startsWith('ship_')) : [];
 
     return (
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4/5 max-w-3xl h-[70vh] bg-gray-900/90 border-2 border-gray-500 z-50 p-5 box-border flex flex-col">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4/5 max-w-3xl h-[70vh] bg-gray-900/90 border-2 border-gray-500 z-[210] p-5 box-border flex flex-col">
             <div className="flex justify-between items-center border-b-2 border-gray-500 pb-2.5 mb-2.5 flex-shrink-0">
                 <h2 className="text-2xl">Ship Hangar</h2>
                 <UIButton onClick={onClose}>Close</UIButton>
@@ -298,8 +298,13 @@ export const CraftingInterface: React.FC<{
 }> = ({ onClose, playerState, onManufacture, stationId }) => {
     const [selectedBpId, setSelectedBpId] = useState<string | null>(null);
     const [craftingMessage, setCraftingMessage] = useState('');
-    
+
     const stationHangar = stationId ? playerState.stationHangars[stationId] || { items: [], materials: {} } : null;
+
+    const availableBlueprints = stationHangar
+        ? [...new Set(stationHangar.items.filter(itemId => itemId.startsWith('bp_')))]
+        : [];
+    availableBlueprints.sort((a, b) => (BLUEPRINT_DATA[a]?.name || a).localeCompare(BLUEPRINT_DATA[b]?.name || b));
 
     const handleManufacture = (bpId: string) => {
         onManufacture(bpId);
@@ -309,8 +314,10 @@ export const CraftingInterface: React.FC<{
         setTimeout(() => setCraftingMessage(''), 3000);
         // Refresh the view after crafting
         const currentSelection = selectedBpId;
-        setSelectedBpId(null);
-        setTimeout(() => setSelectedBpId(currentSelection), 0);
+        if (currentSelection === bpId) {
+            setSelectedBpId(null);
+            setTimeout(() => setSelectedBpId(currentSelection), 0);
+        }
     };
 
     const selectedBpData = selectedBpId ? BLUEPRINT_DATA[selectedBpId] : null;
@@ -319,25 +326,31 @@ export const CraftingInterface: React.FC<{
     return (
         <div className="absolute inset-0 bg-gray-900/95 z-[210] p-5 box-border flex gap-5">
             <div className="bg-gray-800 border border-gray-600 p-4 flex-1 flex flex-col">
-                <h3 className="text-center text-xl mt-0 mb-4">Blueprints</h3>
-                <ul className="list-none p-0 m-0 overflow-y-auto">
-                    {playerState.blueprints.map(bpId => (
-                        <li
-                            key={bpId}
-                            onClick={() => setSelectedBpId(bpId)}
-                            className={`p-2.5 cursor-pointer border-b border-gray-700 hover:bg-gray-700 ${selectedBpId === bpId ? 'bg-indigo-800' : ''}`}
-                        >
-                            {BLUEPRINT_DATA[bpId].name}
-                        </li>
-                    ))}
-                </ul>
+                <h3 className="text-center text-xl mt-0 mb-4">Blueprints in Hangar</h3>
+                <div className="overflow-y-auto">
+                    {availableBlueprints.length === 0 ? (
+                        <p className="text-gray-500 text-sm text-center py-4">No blueprints in this hangar.</p>
+                    ) : (
+                        <ul className="list-none p-0 m-0">
+                            {availableBlueprints.map(bpId => (
+                                <li
+                                    key={bpId}
+                                    onClick={() => setSelectedBpId(bpId)}
+                                    className={`p-2.5 cursor-pointer border-b border-gray-700 hover:bg-gray-700 ${selectedBpId === bpId ? 'bg-indigo-800' : ''}`}
+                                >
+                                    {BLUEPRINT_DATA[bpId]?.name || bpId}
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
             </div>
             <div className="bg-gray-800 border border-gray-600 p-4 flex-[2] flex flex-col">
                 <div className="flex justify-between items-center mb-4">
                     <h3 className="text-xl mt-0">{selectedBpData?.name || 'Select a Blueprint'}</h3>
                     <UIButton onClick={onClose}>Back to Station</UIButton>
                 </div>
-                {selectedBpData && stationHangar && (
+                {selectedBpData && stationHangar ? (
                     <div>
                         <h4 className="text-lg">Required Materials (from Station Hangar):</h4>
                         <ul className="list-none p-0 mb-4 bg-black/20 rounded">
@@ -364,6 +377,8 @@ export const CraftingInterface: React.FC<{
                         </UIButton>
                         <p className="text-center text-green-400 mt-4 h-6">{craftingMessage}</p>
                     </div>
+                ) : (
+                    <p className="text-gray-400 text-center py-4">Select a blueprint from the list to see details.</p>
                 )}
                  {selectedBpData && !stationHangar && (
                     <p className="text-red-400">Cannot craft, not docked at a valid station.</p>

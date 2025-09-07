@@ -79,7 +79,6 @@ export interface PlayerState {
     currentShipId: string;
     currentShipFitting: ShipFitting;
     shipCargo: StorageLocation;
-    blueprints: string[];
     assetHangar: StorageLocation;
     stationHangars: Record<string, StorageLocation>;
 }

@@ -144,7 +144,7 @@ export const SOLAR_SYSTEM_DATA: Record<number, SolarSystemData> = {
 };
 
 export const INITIAL_PLAYER_STATE: PlayerState = {
-    isk: 1000000,
+    isk: 100000000,
     currentShipId: 'ship_rookie',
     currentShipFitting: {
         high: ['mod_miner_i', null],
@@ -156,19 +156,23 @@ export const INITIAL_PLAYER_STATE: PlayerState = {
         items: [],
         materials: {},
     },
-    blueprints: [
-        'bp_rifter', 
-        'bp_venture',
-        'bp_miner_i', 
-        'bp_shield_extender', 
-        'bp_microwarpdrive',
-        'bp_fusion_s'
-    ],
     assetHangar: {
         items: [],
         materials: {}
     },
-    stationHangars: {},
+    stationHangars: {
+        'station_1_Titan_Station': {
+            items: [
+                'bp_rifter', 
+                'bp_venture',
+                'bp_miner_i', 
+                'bp_shield_extender', 
+                'bp_microwarpdrive',
+                'bp_fusion_s'
+            ],
+            materials: {}
+        }
+    },
 };
 
 const ALL_ITEM_DATA = {
