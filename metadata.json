@@ -1,0 +1,5 @@
+{
+  "name": "GalExpl3D - React Edition",
+  "description": "A 3D space exploration game built with React, TypeScript, and Three.js. Navigate the galaxy, fly through solar systems, dock at stations, and craft new items.",
+  "requestFramePermissions": []
+}
