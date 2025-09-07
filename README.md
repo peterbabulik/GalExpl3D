@@ -15,9 +15,10 @@ View your app in AI Studio: https://ai.studio/apps/drive/11eJjeTm-hjaV-QsBiNfODQ
 
 
 1. Install dependencies:
+   `git clone https://github.com/peterbabulik/GalExpl3D.git`
    `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
+3. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+4. Run the app:
    `npm run dev`
 
 
@@ -59,8 +60,10 @@ GalExpl3D is built around a complete industrial gameplay loop, allowing players 
 ## Technology Stack
 
 This project is a testament to the power of a lean, focused technology stack.
-*   **[Three.js](https://threejs.org/)**: The core of the 3D rendering engine.
-*   **Google Gemini AI**: Used for dynamic generation of NPC agent backstories and mission text, ensuring unique and engaging content.
+***React: Powers the entire component-based UI, providing a reactive and efficient user experience.
+***TypeScript: Ensures type safety and scalability across the complex codebase.
+***Three.js: The core of the 3D rendering engine for all in-space visuals.
+***Google Gemini AI: Dynamically generates unique NPC agent backstories and mission text for endless, narrative-driven content.
 
 ## How to Play
 
@@ -73,7 +76,8 @@ This project is a testament to the power of a lean, focused technology stack.
     *   `RF` & Mouse (Hold Left-Click): Pitch and Yaw.
     *   `+/-`: Adjust speed multiplier.
     *   `Enter`: Dock at a station when in range.
+   
 *   **UI Navigation:**
-    *   `M`: Toggle Galaxy Map.
+  
     *   Use the on-screen buttons to access the Hangar and other station services.
 
