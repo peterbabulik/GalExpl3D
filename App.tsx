@@ -366,6 +366,8 @@ export default function App() {
         const createSolarSystem = (systemId: number) => {
             clearScene();
             const systemData = SOLAR_SYSTEM_DATA[systemId] || { name: (getSystemById(systemId) || {}).name || 'Uncharted System', star: { color: 0xffffff, diameter: 1000000 }, planets: [] };
+            const systemGalaxyData = getSystemById(systemId);
+            const systemSecurity = systemGalaxyData?.security ?? 1.0;
             
             const starVertices = [];
             for (let i = 0; i < 10000; i++) {
@@ -418,7 +420,7 @@ export default function App() {
                 });
             }
 
-            const newAsteroids = createAsteroidBelt(systemData, ASTEROID_BELT_TYPES);
+            const newAsteroids = createAsteroidBelt(systemData, ASTEROID_BELT_TYPES, systemSecurity);
             newAsteroids.forEach(asteroid => {
                 three.scene.add(asteroid);
                 gameData.asteroids.push(asteroid);

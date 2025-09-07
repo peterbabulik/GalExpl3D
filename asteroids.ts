@@ -2,22 +2,49 @@ import * as THREE from 'three';
 import type { SolarSystemData, AsteroidBeltType } from './types';
 import { ORE_DATA } from './ores';
 
-function getWeightedRandomOre(distribution: Record<string, number>): string {
+function getWeightedRandomOre(distribution: Record<string, number>): string | undefined {
+    const keys = Object.keys(distribution);
+    if (keys.length === 0) {
+        return undefined;
+    }
+
     const total = Object.values(distribution).reduce((sum, weight) => sum + weight, 0);
+    if (total <= 0) {
+        // Fallback for zero-weight distributions: pick a random ore from the list.
+        return keys[Math.floor(Math.random() * keys.length)];
+    }
+
     let rand = Math.random() * total;
     for (const ore in distribution) {
         rand -= distribution[ore];
         if (rand <= 0) return ore;
     }
-    return Object.keys(distribution)[0]; // Fallback
+
+    return keys[0]; // Should not be reached, but as a safe fallback
 }
 
 export function createAsteroidBelt(
     systemData: SolarSystemData,
-    asteroidBeltTypes: Record<string, AsteroidBeltType>
+    asteroidBeltTypes: Record<string, AsteroidBeltType>,
+    systemSecurity: number
 ): THREE.Mesh[] {
     const beltData = systemData.asteroidBeltType ? asteroidBeltTypes[systemData.asteroidBeltType] : undefined;
     if (!beltData) return [];
+
+    // Filter the ore distribution based on the system's security level.
+    const filteredDistribution: Record<string, number> = {};
+    for (const oreId in beltData.oreDistribution) {
+        const oreData = ORE_DATA[oreId];
+        // Ore can spawn if the system's security is less than or equal to the ore's defined max security level.
+        if (oreData && systemSecurity <= oreData.security) {
+            filteredDistribution[oreId] = beltData.oreDistribution[oreId];
+        }
+    }
+
+    // If no ores are valid for this system from the specified belt type, return an empty belt.
+    if (Object.keys(filteredDistribution).length === 0) {
+        return [];
+    }
 
     const asteroids: THREE.Mesh[] = [];
     const [minCount, maxCount] = beltData.asteroidCount;
@@ -58,7 +85,9 @@ export function createAsteroidBelt(
         asteroid.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
         asteroid.scale.setScalar(THREE.MathUtils.randFloat(15, 40));
         
-        const oreType = getWeightedRandomOre(beltData.oreDistribution);
+        const oreType = getWeightedRandomOre(filteredDistribution);
+        if (!oreType) continue; // Skip if no valid ore can be spawned.
+        
         const oreData = ORE_DATA[oreType];
         
         if (oreData) {
