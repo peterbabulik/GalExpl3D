@@ -23,6 +23,21 @@ export const GALAXY_DATA: GalaxyData = {
         { id: 10, name: 'Delve', security: 0.0, x: -350, y: 0 },
         { id: 11, name: 'Querious', security: 0.0, x: -300, y: -100 },
         { id: 12, name: 'Aridia', security: 0.2, x: 100, y: -200 },
+        // New Systems
+        { id: 13, name: 'Obe', security: 0.6, x: 60, y: 150 },
+        { id: 14, name: 'Tama', security: 0.4, x: 80, y: 110 },
+        { id: 15, name: 'Iralan', security: 0.4, x: -200, y: 180 },
+        { id: 16, name: 'PF-346', security: 0.0, x: -400, y: 250 },
+        { id: 17, name: 'Esoteria', security: 0.0, x: -500, y: -200 },
+        { id: 18, name: 'Fountain', security: 0.0, x: -450, y: 100 },
+        { id: 19, name: 'Stain', security: 0.0, x: 150, y: -300 },
+        { id: 20, name: 'Venal', security: 0.0, x: 300, y: 300 },
+        { id: 21, name: 'Syndicate', security: 0.1, x: -180, y: -250 },
+        { id: 22, name: 'Curse', security: 0.0, x: 0, y: -350 },
+        { id: 23, name: 'Great Wildlands', security: 0.0, x: 400, y: 0 },
+        { id: 24, name: 'Outer Ring', security: 0.3, x: -50, y: -200 },
+        { id: 25, name: 'The Citadel', security: 0.3, x: 200, y: 50 },
+        { id: 26, name: 'Lonetrek', security: 0.6, x: 120, y: 90 },
     ],
     jumps: [
         { from: 1, to: 2 },
@@ -39,6 +54,26 @@ export const GALAXY_DATA: GalaxyData = {
         { from: 9, to: 10 },
         { from: 10, to: 11 },
         { from: 11, to: 9 },
+        // New Jumps
+        { from: 2, to: 13 },
+        { from: 13, to: 14 },
+        { from: 2, to: 26 },
+        { from: 26, to: 25 },
+        { from: 25, to: 7 },
+        { from: 6, to: 15 },
+        { from: 15, to: 16 },
+        { from: 16, to: 18 },
+        { from: 10, to: 18 },
+        { from: 11, to: 17 },
+        { from: 12, to: 19 },
+        { from: 22, to: 19 },
+        { from: 12, to: 22 },
+        { from: 9, to: 21 },
+        { from: 4, to: 21 },
+        { from: 24, to: 21 },
+        { from: 24, to: 3 },
+        { from: 8, to: 20 },
+        { from: 5, to: 23 },
     ]
 };
 
@@ -140,11 +175,49 @@ export const SOLAR_SYSTEM_DATA: Record<number, SolarSystemData> = {
              { name: 'Aridia III', type: 'desert', diameter: 7500, distance: 7500, color: 0xF5DEB3 },
         ],
         asteroidBeltType: 'rich',
-    }
+    },
+    // New Low-Sec/Null-Sec stations
+    14: {
+        name: 'Tama',
+        star: { color: 0xFF8C00, diameter: 950000 },
+        planets: [
+            { name: 'Tama V', type: 'barren', diameter: 9000, distance: 14000, color: 0xA0522D },
+        ],
+        station: { name: 'Tama V - Moon 1 Smuggler Den', orbitsPlanetIndex: 0, orbitDistance: 300 },
+        asteroidBeltType: 'rich',
+    },
+    19: {
+        name: 'Stain',
+        star: { color: 0x8B0000, diameter: 2200000 },
+        planets: [
+            { name: 'LGK-VP I', type: 'lava', diameter: 15000, distance: 16000, color: 0xB22222 },
+        ],
+        station: { name: 'LGK-VP - Sansha\'s Nation Fortress', orbitsPlanetIndex: 0, orbitDistance: 600 },
+        asteroidBeltType: 'exceptional',
+    },
+    20: {
+        name: 'Venal',
+        star: { color: 0x00BFFF, diameter: 1900000 },
+        planets: [
+            { name: 'Venal I', type: 'ice', diameter: 18000, distance: 10000, color: 0x5F9EA0 },
+            { name: '6-CZ49', type: 'gas', diameter: 70000, distance: 30000, color: 0x00CED1 },
+        ],
+        station: { name: '6-CZ49 - Guristas Assembly Plant', orbitsPlanetIndex: 1, orbitDistance: 500 },
+        asteroidBeltType: 'exceptional',
+    },
+    21: {
+        name: 'Syndicate',
+        star: { color: 0x9370DB, diameter: 1400000 },
+        planets: [
+            { name: 'X-7OMU II', type: 'rocky', diameter: 11000, distance: 12000, color: 0x778899 },
+        ],
+        station: { name: 'X-7OMU - Intaki Syndicate Station', orbitsPlanetIndex: 0, orbitDistance: 450 },
+        asteroidBeltType: 'rich',
+    },
 };
 
 export const INITIAL_PLAYER_STATE: PlayerState = {
-    isk: 100000000,
+    isk: 1000000000,
     currentShipId: 'ship_rookie',
     currentShipFitting: {
         high: ['mod_miner_i', null],

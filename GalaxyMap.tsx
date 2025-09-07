@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import type { TooltipData } from './types';
-import { GALAXY_DATA } from './constants';
+import type { TooltipData, GalaxySystemData } from './types';
+import { GALAXY_DATA, SOLAR_SYSTEM_DATA } from './constants';
 
 // --- UI HELPER ---
 const Tooltip: React.FC<{ data: TooltipData }> = ({ data }) => {
@@ -65,18 +65,31 @@ export function GalaxyMap({ onSystemSelect }: GalaxyMapProps) {
         mount.appendChild(mapState.renderer.domElement);
 
         // --- SCENE CREATION ---
-        const createStarSprite = (security: number) => {
+        const createStarSprite = (system: GalaxySystemData) => {
             const canvas = document.createElement('canvas');
             canvas.width = 64; canvas.height = 64;
             const context = canvas.getContext('2d')!;
+
+            // Draw station ring first, so it's behind the star glow
+            const hasStation = !!SOLAR_SYSTEM_DATA[system.id]?.station;
+            if (hasStation) {
+                context.strokeStyle = '#00FFFF'; // Cyan
+                context.lineWidth = 3;
+                context.beginPath();
+                context.arc(32, 32, 28, 0, 2 * Math.PI);
+                context.stroke();
+            }
+            
+            // Then draw the star gradient over it
             const gradient = context.createRadialGradient(32, 32, 0, 32, 32, 32);
-            let color = security < 0.5 ? '#FF6600' : security < 0.8 ? '#FFFF00' : '#FFFFFF';
+            let color = system.security < 0.5 ? '#FF6600' : system.security < 0.8 ? '#FFFF00' : '#FFFFFF';
             gradient.addColorStop(0, 'rgba(255,255,255,1)');
             gradient.addColorStop(0.2, color);
             gradient.addColorStop(0.5, 'rgba(0,0,0,0.5)');
             gradient.addColorStop(1, 'rgba(0,0,0,0)');
             context.fillStyle = gradient;
             context.fillRect(0, 0, 64, 64);
+
             const texture = new THREE.CanvasTexture(canvas);
             return new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, blending: THREE.AdditiveBlending }));
         };
@@ -85,7 +98,7 @@ export function GalaxyMap({ onSystemSelect }: GalaxyMapProps) {
             if (!mapState.scene) return;
             mapState.starObjects = [];
             GALAXY_DATA.systems.forEach(system => {
-                const sprite = createStarSprite(system.security);
+                const sprite = createStarSprite(system);
                 sprite.position.set(system.x, system.y, 0);
                 sprite.scale.set(20, 20, 1);
                 sprite.userData = { id: system.id, name: system.name, security: system.security };
@@ -115,8 +128,13 @@ export function GalaxyMap({ onSystemSelect }: GalaxyMapProps) {
                 if (mapState.intersectedObject !== intersects[0].object) {
                     mapState.intersectedObject = intersects[0].object;
                     document.body.style.cursor = 'pointer';
-                    const { name, security } = intersects[0].object.userData;
-                    setTooltipData(d => ({ ...d, visible: true, content: `<strong>${name}</strong><br>Security: ${security.toFixed(1)}` }));
+                    const { id, name, security } = intersects[0].object.userData;
+                    const hasStation = !!SOLAR_SYSTEM_DATA[id]?.station;
+                    let content = `<strong>${name}</strong><br>Security: ${security.toFixed(1)}`;
+                    if (hasStation) {
+                        content += '<br>🛰️ Station Present';
+                    }
+                    setTooltipData(d => ({ ...d, visible: true, content }));
                 }
             } else {
                 if (mapState.intersectedObject) {
