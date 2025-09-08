@@ -3,20 +3,18 @@
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/main/Screenshot_20250908_003543.png" />
 </div>
 
-# Run and deploy your AI Studio app
-
-This contains everything you need to run your app locally.
-
-View your app in AI Studio: https://ai.studio/apps/drive/11eJjeTm-hjaV-QsBiNfODQ9Z_vkkqJa5
+**[Live Demo](https://peterbabulik.github.io/GalExpl3D/)**
 
 ## Run Locally
 
 **Prerequisites:**  Node.js
 
 
-1. Install dependencies:
+1. Download and Install dependencies:
+   Download
    `git clone https://github.com/peterbabulik/GalExpl3D.git`
-   `npm install`
+   Install
+   `npm install vite @google/genai`
 3. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 4. Run the app:
    `npm run dev`
@@ -67,7 +65,7 @@ This project is a testament to the power of a lean, focused technology stack.
 
 ## How to Play
 
-**[Live Demo](https://ai.studio/apps/drive/11eJjeTm-hjaV-QsBiNfODQ9Z_vkkqJa5)**
+**[Live Demo](https://peterbabulik.github.io/GalExpl3D/)**
 
 ### Basic Controls
 *   **In Space:**
