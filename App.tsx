@@ -83,6 +83,7 @@ export default function App() {
     const [targetData, setTargetData] = useState<TargetData>({ object: null, screenX: 0, screenY: 0, selectedTarget: null });
     const [dockingData, setDockingData] = useState<DockingData>({ visible: false, distance: 0 });
     const [navPanelData, setNavPanelData] = useState<NavPanelItem[]>([]);
+    const [showStationHelp, setShowStationHelp] = useState(false);
     
     // Gemini-related state (cached data)
     const [agents, setAgents] = useState<Record<string, AgentData>>({});
@@ -859,14 +860,19 @@ export default function App() {
                     {gameState === GameState.DOCKED && gameDataRef.current.dockedStation && (
                         <StationInterface 
                             stationName={gameDataRef.current.dockedStation.userData.name}
-                            onUndock={() => fadeTransition(() => setGameState(GameState.SOLAR_SYSTEM))}
-                            onOpenCrafting={() => setCraftingOpen(true)}
-                            onOpenShipHangar={() => setShipHangarOpen(true)}
-                            onOpenItemHangar={() => setItemHangarOpen(true)}
-                            onOpenFitting={() => setFittingOpen(true)}
-                            onOpenReprocessing={() => setReprocessingOpen(true)}
-                            onOpenMarket={() => setMarketOpen(true)}
-                            onOpenAgent={() => setAgentInterfaceOpen(true)}
+                            onUndock={() => {
+                                setShowStationHelp(false);
+                                fadeTransition(() => setGameState(GameState.SOLAR_SYSTEM));
+                            }}
+                            onOpenCrafting={() => { setCraftingOpen(true); setShowStationHelp(false); }}
+                            onOpenShipHangar={() => { setShipHangarOpen(true); setShowStationHelp(false); }}
+                            onOpenItemHangar={() => { setItemHangarOpen(true); setShowStationHelp(false); }}
+                            onOpenFitting={() => { setFittingOpen(true); setShowStationHelp(false); }}
+                            onOpenReprocessing={() => { setReprocessingOpen(true); setShowStationHelp(false); }}
+                            onOpenMarket={() => { setMarketOpen(true); setShowStationHelp(false); }}
+                            onOpenAgent={() => { setAgentInterfaceOpen(true); setShowStationHelp(false); }}
+                            showHelp={showStationHelp}
+                            onToggleHelp={() => setShowStationHelp(prev => !prev)}
                         />
                     )}
 

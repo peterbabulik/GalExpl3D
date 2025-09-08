@@ -870,6 +870,56 @@ export const MarketInterface: React.FC<{
     );
 }
 
+export const StationHelpOverlay: React.FC<{onClose: () => void}> = ({onClose}) => {
+    // Approximate vertical center of the button list, adjusted for the title above it.
+    const listCenterY = '55%';
+    // Vertical distance between the center of each button.
+    const buttonStep = 3.25; // in rem
+    // Calculates the vertical center of a button based on its index (1-based).
+    const buttonCenterY = (index: number) => `calc(${listCenterY} + ${(index - 4.5) * buttonStep}rem)`;
+
+    return (
+        <div className="absolute inset-0 z-[201]" onClick={onClose}>
+            <div className="relative w-full h-full pointer-events-none text-lg font-semibold">
+                {/* RIGHT SIDE (BLUE) - Explains how to get resources */}
+                <div className="absolute text-blue-400 text-left" style={{ top: `calc(${buttonCenterY(1)} - 0.7rem)`, left: 'calc(50% + 18rem)' }}>
+                    Mine Asteroids
+                </div>
+                <div className="absolute h-px w-[9rem] bg-blue-400" style={{ top: buttonCenterY(1), left: 'calc(50% + 9rem)' }}></div>
+                <div className="absolute w-px h-[19.5rem] bg-blue-400" style={{ top: buttonCenterY(1), left: 'calc(50% + 9rem)' }}></div>
+
+                <div className="absolute text-blue-400 text-left" style={{ top: `calc(${buttonCenterY(3)} - 0.7rem)`, left: 'calc(50% + 18rem)' }}>
+                    Move Asteroids from<br/>Ship to Station
+                </div>
+                <div className="absolute h-px w-[9rem] bg-blue-400" style={{ top: buttonCenterY(3), left: 'calc(50% + 9rem)' }}></div>
+
+                <div className="absolute text-blue-400 text-left leading-tight" style={{ top: `calc(${buttonCenterY(7)} - 0.5rem)`, left: 'calc(50% + 18rem)' }}>
+                    Sell Asteroids for ISK<br/>Buy Blueprints
+                </div>
+                <div className="absolute h-px w-[9rem] bg-blue-400" style={{ top: buttonCenterY(7), left: 'calc(50% + 9rem)' }}></div>
+
+                {/* LEFT SIDE (RED) - Explains what to do with resources */}
+                <div className="absolute text-red-400 text-right" style={{ top: `calc(${buttonCenterY(4)} - 0.7rem)`, right: 'calc(50% + 18rem)' }}>
+                    Fitt to Ship
+                </div>
+                <div className="absolute h-px w-[9rem] bg-red-400" style={{ top: buttonCenterY(4), right: 'calc(50% + 9rem)' }}></div>
+                <div className="absolute w-px h-[9.75rem] bg-red-400" style={{ top: buttonCenterY(4), right: 'calc(50% + 9rem)' }}></div>
+
+                <div className="absolute text-red-400 text-right" style={{ top: `calc(${buttonCenterY(5)} - 0.7rem)`, right: 'calc(50% + 18rem)' }}>
+                    Craft
+                </div>
+                <div className="absolute h-px w-[9rem] bg-red-400" style={{ top: buttonCenterY(5), right: 'calc(50% + 9rem)' }}></div>
+
+                <div className="absolute text-red-400 text-right" style={{ top: `calc(${buttonCenterY(6)} - 0.7rem)`, right: 'calc(50% + 18rem)' }}>
+                    Reprocess
+                </div>
+                <div className="absolute h-px w-[9rem] bg-red-400" style={{ top: buttonCenterY(6), right: 'calc(50% + 9rem)' }}></div>
+            </div>
+        </div>
+    );
+};
+
+
 export const StationInterface: React.FC<{
     stationName: string;
     onUndock: () => void;
@@ -880,9 +930,21 @@ export const StationInterface: React.FC<{
     onOpenReprocessing: () => void;
     onOpenMarket: () => void;
     onOpenAgent: () => void;
-}> = ({ stationName, onUndock, onOpenCrafting, onOpenShipHangar, onOpenItemHangar, onOpenFitting, onOpenReprocessing, onOpenMarket, onOpenAgent }) => {
+    showHelp: boolean;
+    onToggleHelp: () => void;
+}> = ({ stationName, onUndock, onOpenCrafting, onOpenShipHangar, onOpenItemHangar, onOpenFitting, onOpenReprocessing, onOpenMarket, onOpenAgent, showHelp, onToggleHelp }) => {
     return (
         <div className="absolute inset-0 bg-gray-900/95 z-[200] p-12 box-border flex flex-col items-center justify-center">
+            {showHelp && <StationHelpOverlay onClose={onToggleHelp} />}
+             <div className="absolute top-5 right-5 z-[202]">
+                <button 
+                    onClick={onToggleHelp} 
+                    className="w-10 h-10 bg-gray-700/80 rounded-full border border-gray-400 text-white text-2xl font-bold flex items-center justify-center hover:bg-gray-600/90"
+                    aria-label="Toggle Help"
+                >
+                    ?
+                </button>
+            </div>
             <h2 className="text-4xl mb-10 text-center">Docked at {stationName}</h2>
             <div className="flex flex-col items-center gap-4">
                 <UIButton onClick={onUndock} className="w-64 !text-base">Back to Space (Undock)</UIButton>
