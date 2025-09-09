@@ -83,6 +83,7 @@ export default function App() {
     const [dockingData, setDockingData] = useState<DockingData>({ visible: false, distance: 0 });
     const [navPanelData, setNavPanelData] = useState<NavPanelItem[]>([]);
     const [showStationHelp, setShowStationHelp] = useState(false);
+
     const [showCargoFullMessage, setShowCargoFullMessage] = useState(false);
     
     // Gemini-related state (cached data)
