@@ -104,6 +104,8 @@ This project is a testament to the power of a lean, focused technology stack.
 
 **[Live Demo](https://peterbabulik.github.io/GalExpl3D/)**
 
+### Mission 1 go to Sol. Titan Station, there are some Blueprints. First craft Mining Laser (mine, transfer to station, reprocess, craft) and fit it to your Rookie ship.
+
 ### Basic Controls
 *   **In Space:**
     *   `WASD` + `Space` / `Shift`: Move/Strafe your ship.
