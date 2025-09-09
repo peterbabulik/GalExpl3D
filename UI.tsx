@@ -297,13 +297,13 @@ export const ItemHangarModal: React.FC<{
     const handleMoveItem = (itemId: string, from: 'ship' | 'station') => {
         setPlayerState(p => {
             const newState = JSON.parse(JSON.stringify(p));
-            const sourceHangar = from === 'ship' ? newState.shipCargo : newState.stationHangars[stationId];
-            let destHangar = from === 'ship' ? newState.stationHangars[stationId] : newState.shipCargo;
-            
-            if (from === 'ship' && !destHangar) {
-                destHangar = { items: [], materials: {} };
-                newState.stationHangars[stationId] = destHangar;
+// FIX: Ensure the station hangar exists in the state before any transfer operations. This prevents errors when interacting with a new, uninitialized station hangar.
+            if (!newState.stationHangars[stationId]) {
+                newState.stationHangars[stationId] = { items: [], materials: {} };
             }
+            
+            const sourceHangar = from === 'ship' ? newState.shipCargo : newState.stationHangars[stationId];
+            const destHangar = from === 'ship' ? newState.stationHangars[stationId] : newState.shipCargo;
 
             const itemIndex = sourceHangar.items.indexOf(itemId);
             if (itemIndex > -1) {
@@ -318,22 +318,22 @@ export const ItemHangarModal: React.FC<{
         setPlayerState(p => {
             const newState = JSON.parse(JSON.stringify(p));
             
-            const sourceHangar: StorageLocation = from === 'ship' ? newState.shipCargo : newState.stationHangars[stationId];
-            let destHangar: StorageLocation = from === 'ship' ? newState.stationHangars[stationId] : newState.shipCargo;
-
-             if (from === 'ship' && !newState.stationHangars[stationId]) {
+// FIX: Ensure the station hangar exists in the state before any transfer operations. This prevents errors when interacting with a new, uninitialized station hangar.
+            if (!newState.stationHangars[stationId]) {
                 newState.stationHangars[stationId] = { items: [], materials: {} };
-                destHangar = newState.stationHangars[stationId];
             }
 
-            if (sourceHangar.materials[matId]) {
+            const sourceHangar = from === 'ship' ? newState.shipCargo : newState.stationHangars[stationId];
+            const destHangar = from === 'ship' ? newState.stationHangars[stationId] : newState.shipCargo;
+
+// FIX: Added check to ensure the source hangar has enough materials to transfer, preventing negative quantities.
+            if (sourceHangar.materials[matId] && sourceHangar.materials[matId] >= quantity) {
                 sourceHangar.materials[matId] -= quantity;
                 if (sourceHangar.materials[matId] <= 0) {
                     delete sourceHangar.materials[matId];
                 }
+                destHangar.materials[matId] = (destHangar.materials[matId] || 0) + quantity;
             }
-            
-            destHangar.materials[matId] = (destHangar.materials[matId] || 0) + quantity;
 
             return newState;
         });
@@ -348,11 +348,11 @@ export const ItemHangarModal: React.FC<{
                     <h4 className="text-lg border-b border-gray-700 pb-1 mb-2">Items</h4>
                     {hangar.items.length === 0 && <p className="text-gray-500 text-sm pl-2 mb-4">No items.</p>}
                     <ul className="list-none p-0 m-0 mb-4">
-                        {hangar.items.map(itemId => {
+                        {hangar.items.map((itemId, index) => {
                             const itemData = getItemData(itemId);
                             const isShip = itemData?.category === 'Ship';
                             return (
-                                <li key={`${itemId}-${Math.random()}`} className="flex justify-between items-center p-1.5 hover:bg-gray-700">
+                                <li key={`${itemId}-${index}`} className="flex justify-between items-center p-1.5 hover:bg-gray-700">
                                     <span className={isShip ? 'text-cyan-400' : ''}>{itemData?.name || itemId}</span>
                                     <UIButton onClick={() => handleMoveItem(itemId, type)} className="!px-2 !py-1">{transferLabel}</UIButton>
                                 </li>
