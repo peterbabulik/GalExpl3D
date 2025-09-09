@@ -1,0 +1,28 @@
+Missing Module Blueprints
+The following modules are available in the game but are missing the blueprints required to manufacture them:
+High Slot Modules:
+mod_280mm_artillery_i (280mm Howitzer Artillery I)
+mod_125mm_railgun_i (125mm Railgun I)
+mod_electron_blaster_i (Light Electron Blaster I)
+mod_pulse_laser_i (Small Focused Pulse Laser I)
+mod_rocket_launcher_i (Rocket Launcher I)
+mod_miner_ii (Miner II)
+Medium Slot Modules:
+mod_invuln_field_i (Adaptive Invulnerability Field I)
+mod_warp_scrambler_i (Warp Scrambler I)
+mod_stasis_web_i (Stasis Webifier I)
+Low Slot Modules:
+mod_200mm_plates_i (200mm Steel Plates I)
+mod_armor_repairer_i (Small Armor Repairer I)
+mod_adaptive_plating_i (Adaptive Nano Plating I)
+mod_gyrostabilizer_i (Gyrostabilizer I)
+mod_magstab_i (Magnetic Field Stabilizer I)
+mod_heat_sink_i (Heat Sink I)
+mod_bcs_i (Ballistic Control System I)
+mod_pds_i (Power Diagnostic System I)
+mod_cap_relay_i (Capacitor Power Relay I)
+mod_mlu_i (Mining Laser Upgrade I)
+Rig Slot Modules:
+mod_cdfe_rig_i (Small Core Defense Field Extender I)
+mod_trimark_rig_i (Small Trimark Armor Pump I)
+mod_aux_thrusters_rig_i (Small Auxiliary Thrusters I)

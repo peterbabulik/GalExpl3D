@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
 import { GameState } from './types';
@@ -28,7 +29,8 @@ import {
     MiningProgressIndicator,
     SystemInfoUI,
     AgentInterface,
-    MissionTrackerUI
+    MissionTrackerUI,
+    VirtualJoystick
 } from './UI';
 import { ASTEROID_BELT_TYPES } from './ores';
 import { createAsteroidBelt } from './asteroids';
@@ -76,6 +78,7 @@ export default function App() {
     const [isAgentInterfaceOpen, setAgentInterfaceOpen] = useState(false);
     const [isWarpingState, setIsWarpingState] = useState(false);
     const [miningState, setMiningState] = useState<MiningState | null>(null);
+    const [isAutoMining, setIsAutoMining] = useState(false);
     const [miningTargetScreenPos, setMiningTargetScreenPos] = useState<{x: number, y: number, visible: boolean} | null>(null);
     const [isFading, setFading] = useState(false);
     const [tooltipData, setTooltipData] = useState<TooltipData>({ visible: false, content: '', x: 0, y: 0 });
@@ -83,8 +86,8 @@ export default function App() {
     const [dockingData, setDockingData] = useState<DockingData>({ visible: false, distance: 0 });
     const [navPanelData, setNavPanelData] = useState<NavPanelItem[]>([]);
     const [showStationHelp, setShowStationHelp] = useState(false);
-
     const [showCargoFullMessage, setShowCargoFullMessage] = useState(false);
+    const [joystickVector, setJoystickVector] = useState({ x: 0, y: 0 });
     
     // Gemini-related state (cached data)
     const [agents, setAgents] = useState<Record<string, AgentData>>({});
@@ -113,6 +116,7 @@ export default function App() {
     const prevMousePosRef = useRef({ x: 0, y: 0 });
     const miningTimeoutRef = useRef<number | null>(null);
     const miningStateRef = useRef(miningState);
+    const joystickVecRef = useRef(joystickVector);
 
 
     // --- STATE-MUTATING HANDLERS ---
@@ -315,6 +319,7 @@ export default function App() {
             miningTimeoutRef.current = null;
         }
         setMiningState(null);
+        setIsAutoMining(false);
     }, []);
 
     const handleDeselectTarget = useCallback(() => {
@@ -342,48 +347,52 @@ export default function App() {
         });
     }, [targetData.selectedTarget, playerState.currentShipId]);
     
-    const handleMineTarget = useCallback(() => {
-        if (!targetData.selectedTarget || targetData.selectedTarget.type !== 'asteroid' || miningState) return;
+    const startMiningCycle = useCallback(() => {
+        if (!targetData.selectedTarget || targetData.selectedTarget.type !== 'asteroid' || miningState) {
+            return false;
+        }
 
         const minerModuleIds = playerState.currentShipFitting.high.filter((id): id is string => !!id && id.includes('miner'));
         if (minerModuleIds.length === 0) {
+// FIX: Corrected alert logic to notify the user if they attempt to mine without a laser. This alert will now correctly trigger for both single-cycle and auto-mining initiation.
             alert("No mining laser fitted!");
-            return;
+            return false;
         }
-    
-        // Check for cargo space before starting a cycle
+
         const currentShipData = SHIP_DATA[playerState.currentShipId];
-        if (!currentShipData) return;
-        
+        if (!currentShipData) return false;
+
         const totalCapacity = currentShipData.attributes.cargoCapacity + (currentShipData.attributes.oreHold || 0);
-        
         let currentCargoVolume = 0;
         for (const matId in playerState.shipCargo.materials) {
-            const itemData = getItemData(matId);
-            currentCargoVolume += (itemData?.volume || 0) * playerState.shipCargo.materials[matId];
+            currentCargoVolume += (getItemData(matId)?.volume || 0) * playerState.shipCargo.materials[matId];
         }
         for (const itemId of playerState.shipCargo.items) {
-            const itemData = getItemData(itemId);
-            currentCargoVolume += (itemData?.volume || 0);
+            currentCargoVolume += (getItemData(itemId)?.volume || 0);
         }
-        
+
         if (currentCargoVolume >= totalCapacity) {
             setShowCargoFullMessage(true);
             setTimeout(() => setShowCargoFullMessage(false), 3000);
-            return;
+            return false;
         }
         
+        const distance = threeRef.current.player.position.distanceTo(targetData.selectedTarget.object3D.getWorldPosition(new THREE.Vector3()));
+        if (distance > MINING_RANGE) {
+            return false;
+        }
+
         const firstMinerModule = getItemData(minerModuleIds[0]) as Module;
         const cycleTime = (firstMinerModule.attributes.cycleTime || 60) * 1000;
-        
-        setMiningState({ 
-            targetId: targetData.selectedTarget.uuid, 
+
+        setMiningState({
+            targetId: targetData.selectedTarget.uuid,
             targetObject: targetData.selectedTarget.object3D,
-            progress: 0, 
-            startTime: Date.now(), 
-            cycleTime: cycleTime 
+            progress: 0,
+            startTime: Date.now(),
+            cycleTime: cycleTime
         });
-    
+
         miningTimeoutRef.current = window.setTimeout(() => {
             setPlayerState(p => {
                 const targetObject = gameDataRef.current.asteroids.find(a => a.uuid === targetData.selectedTarget!.uuid);
@@ -457,8 +466,30 @@ export default function App() {
             });
             setMiningState(null);
         }, cycleTime);
-    
-    }, [playerState.currentShipId, playerState.currentShipFitting.high, playerState.shipCargo, targetData.selectedTarget, miningState, handleDeselectTarget]);
+        return true;
+    }, [playerState, targetData.selectedTarget, miningState, handleDeselectTarget, isAutoMining]);
+
+    const handleMineSingleCycle = useCallback(() => {
+        if (miningState) return;
+        setIsAutoMining(false);
+        startMiningCycle();
+    }, [miningState, startMiningCycle]);
+
+    const handleStartAutoMine = useCallback(() => {
+        if (miningState || isAutoMining) return;
+        setIsAutoMining(true);
+    }, [miningState, isAutoMining]);
+
+    // This effect drives the auto-mining loop.
+    useEffect(() => {
+        if (isAutoMining && !miningState) {
+            const cycleStarted = startMiningCycle();
+            if (!cycleStarted) {
+                // If we failed to start a cycle (e.g., cargo full, out of range), stop trying.
+                setIsAutoMining(false);
+            }
+        }
+    }, [isAutoMining, miningState, startMiningCycle]);
 
     const switchToGalaxyMap = () => {
          if (gameState === GameState.TRANSITIONING) return;
@@ -690,10 +721,18 @@ export default function App() {
             const baseSpeed = currentShip.attributes.speed;
             const agility = currentShip.attributes.agility;
             const finalSpeed = baseSpeed * speedMultiplier;
-            if (keysRef.current['KeyW']) three.player.translateZ(-finalSpeed * delta);
-            if (keysRef.current['KeyS']) three.player.translateZ(finalSpeed * delta);
-            if (keysRef.current['KeyA']) three.player.translateX(-finalSpeed * delta * 0.5);
-            if (keysRef.current['KeyD']) three.player.translateX(finalSpeed * delta * 0.5);
+
+            // Combine keyboard and joystick inputs
+            const forwardInput = (keysRef.current['KeyW'] ? 1 : 0) - (keysRef.current['KeyS'] ? 1 : 0);
+            const strafeInput = (keysRef.current['KeyD'] ? 1 : 0) - (keysRef.current['KeyA'] ? 1 : 0);
+            
+            const finalForward = Math.max(-1, Math.min(1, forwardInput - joystickVecRef.current.y));
+            const finalStrafe = Math.max(-1, Math.min(1, strafeInput + joystickVecRef.current.x));
+
+            if (finalForward !== 0) three.player.translateZ(-finalSpeed * finalForward * delta);
+            if (finalStrafe !== 0) three.player.translateX(finalSpeed * finalStrafe * delta * 0.5);
+
+            // Vertical, roll, and pitch controls remain keyboard-only for now
             if (keysRef.current['Space']) three.player.translateY(finalSpeed * delta * 0.5);
             if (keysRef.current['ShiftLeft']) three.player.translateY(-finalSpeed * delta * 0.5);
             if (keysRef.current['KeyQ']) three.player.rotateZ((1 / agility) * 3 * delta);
@@ -759,7 +798,6 @@ export default function App() {
             mousePosRef.current.y = -(event.clientY / window.innerHeight) * 2 + 1;
             setTooltipData(d => ({ ...d, x: event.clientX, y: event.clientY }));
             if(gameData.isMouseLooking && three.player && !isWarping() && !gameData.lookAtTarget) {
-                // FIX: Define deltaX and deltaY based on mouse movement.
                 const deltaX = event.clientX - prevMousePosRef.current.x;
                 const deltaY = event.clientY - prevMousePosRef.current.y;
                 const currentShipId = (mount.parentElement as HTMLElement)?.dataset.shipid;
@@ -790,6 +828,53 @@ export default function App() {
         };
         const onKeyUp = (event: KeyboardEvent) => { keysRef.current[event.code] = false; };
         
+        const onTouchStart = (event: TouchEvent) => {
+            // If the touch starts on a UI element that should allow scrolling,
+            // do nothing and let the browser handle it.
+            if ((event.target as HTMLElement).closest('.allow-touch-scroll')) {
+                return;
+            }
+
+            // If the touch starts on the main 3D canvas, initiate camera look.
+            if (event.target === three.renderer.domElement) {
+                if (event.touches.length === 1) {
+                    event.preventDefault();
+                    prevMousePosRef.current.x = event.touches[0].clientX;
+                    prevMousePosRef.current.y = event.touches[0].clientY;
+                    const currentGameState = (mount.parentElement as HTMLElement)?.dataset.gamestate;
+                    if (currentGameState === GameState.SOLAR_SYSTEM) {
+                        const isModalOpen = (mount.parentElement as HTMLElement)?.dataset.modalopen === 'true';
+                        if (!isModalOpen) gameData.isMouseLooking = true;
+                    }
+                }
+            }
+        };
+
+        const onTouchMove = (event: TouchEvent) => {
+            if (event.touches.length === 1) {
+                 // Only prevent default and rotate camera if we are in "mouse looking" mode.
+                if(gameData.isMouseLooking && three.player && !isWarping() && !gameData.lookAtTarget) {
+                    event.preventDefault(); // Prevent scrolling ONLY when rotating camera.
+                    const touch = event.touches[0];
+                    const deltaX = touch.clientX - prevMousePosRef.current.x;
+                    const deltaY = touch.clientY - prevMousePosRef.current.y;
+                    const currentShipId = (mount.parentElement as HTMLElement)?.dataset.shipid;
+                    const ship = SHIP_DATA[currentShipId];
+                    if(!ship) return;
+                    const agilityFactor = 1 / (ship.attributes.agility * 2);
+                    three.player.rotateY(-deltaX * agilityFactor * 0.05);
+                    three.player.rotateX(-deltaY * agilityFactor * 0.05);
+
+                    prevMousePosRef.current.x = touch.clientX;
+                    prevMousePosRef.current.y = touch.clientY;
+                }
+            }
+        };
+
+        const onTouchEnd = () => {
+            gameData.isMouseLooking = false;
+        };
+
         // --- INIT & CLEANUP ---
         window.addEventListener('resize', onWindowResize);
         document.addEventListener('mousemove', onMouseMove);
@@ -797,6 +882,10 @@ export default function App() {
         document.addEventListener('mouseup', onMouseUp);
         document.addEventListener('keydown', onKeyDown);
         document.addEventListener('keyup', onKeyUp);
+        document.addEventListener('touchstart', onTouchStart, { passive: false });
+        document.addEventListener('touchmove', onTouchMove, { passive: false });
+        document.addEventListener('touchend', onTouchEnd);
+        document.addEventListener('touchcancel', onTouchEnd);
         
         animate();
         
@@ -808,6 +897,10 @@ export default function App() {
             document.removeEventListener('mouseup', onMouseUp);
             document.removeEventListener('keydown', onKeyDown);
             document.removeEventListener('keyup', onKeyUp);
+            document.removeEventListener('touchstart', onTouchStart);
+            document.removeEventListener('touchmove', onTouchMove);
+            document.removeEventListener('touchend', onTouchEnd);
+            document.removeEventListener('touchcancel', onTouchEnd);
             if (three.renderer) mount.removeChild(three.renderer.domElement);
             three.renderer?.dispose();
         };
@@ -838,7 +931,6 @@ export default function App() {
             if (gameState === GameState.SOLAR_SYSTEM) {
                 if (event.code === 'Equal' || event.code === 'NumpadAdd') setSpeedMultiplier(s => Math.min(2.0, s + 0.25));
                 if (event.code === 'Minus' || event.code === 'NumpadSubtract') setSpeedMultiplier(s => Math.max(0.25, s - 0.25));
-                // if (event.code === 'KeyM') switchToGalaxyMap();
             }
         };
         window.addEventListener('keydown', handleKeyPress);
@@ -856,7 +948,13 @@ export default function App() {
         }, 50);
         return () => clearInterval(interval);
     }, [miningState]);
+    
+    // Effect to keep joystick ref up-to-date for the animation loop
+    useEffect(() => {
+        joystickVecRef.current = joystickVector;
+    }, [joystickVector]);
 
+    const isTouchDevice = 'ontouchstart' in window;
     const currentShip = SHIP_DATA[playerState.currentShipId];
     const isModalOpen = isShipHangarOpen || isItemHangarOpen || isCraftingOpen || isFittingOpen || isReprocessingOpen || isMarketOpen || isAgentInterfaceOpen;
 
@@ -876,6 +974,8 @@ export default function App() {
     };
 
     const isSolarSystemView = gameState === GameState.SOLAR_SYSTEM || gameState === GameState.DOCKED;
+
+    const isDockable = targetData.selectedTarget?.type === 'station' && targetData.selectedTarget.distance < DOCKING_RANGE;
 
     return (
         <div 
@@ -913,13 +1013,21 @@ export default function App() {
                         <SelectedTargetUI 
                             target={targetData.selectedTarget} 
                             miningState={miningState ? { targetId: miningState.targetId, progress: miningState.progress } : null} 
+                            isAutoMining={isAutoMining}
                             onWarp={handleWarpToTarget} 
-                            onMine={handleMineTarget}
+                            onMine={handleMineSingleCycle}
+                            onAutoMine={handleStartAutoMine}
                             onStopMine={handleStopMining}
                             onLookAt={handleLookAtTarget}
                             onDeselect={handleDeselectTarget}
                             setTooltip={setTooltipContent}
                             clearTooltip={clearTooltipContent}
+                            isDockable={isDockable}
+                            onDock={() => {
+                                if (targetData.selectedTarget && targetData.selectedTarget.type === 'station') {
+                                    dockAtStation(targetData.selectedTarget.object3D);
+                                }
+                            }}
                         />
                     }
 
@@ -927,10 +1035,16 @@ export default function App() {
                         <div className="absolute bottom-5 w-full text-center pointer-events-none z-10">
                             {isWarpingState && <p className="text-2xl text-cyan-400 animate-pulse">WARP DRIVE ACTIVE</p>}
                             <div className="text-lg mb-1.5">Ship: {currentShip?.name}</div>
-                            <div className="text-sm">Mouse: Aim | W/S: Fwd/Back | A/D: Strafe | Space/Shift: Up/Down | Q/E: Roll | R/F: Pitch</div>
-                            <div className="text-sm">+/-: Change Speed Multiplier | Speed: {Math.round(speedMultiplier * 100)}% | </div>
+                            {!isTouchDevice && (
+                                <>
+                                    <div className="text-sm">Mouse: Aim | W/S: Fwd/Back | A/D: Strafe | Space/Shift: Up/Down | Q/E: Roll | R/F: Pitch</div>
+                                    <div className="text-sm">+/-: Change Speed Multiplier | Speed: {Math.round(speedMultiplier * 100)}% | </div>
+                                </>
+                            )}
                         </div>
                     )}
+
+                    {gameState === GameState.SOLAR_SYSTEM && isTouchDevice && !isModalOpen && <VirtualJoystick onMove={setJoystickVector} />}
 
                     <Tooltip data={tooltipData} />
                     {gameState === GameState.SOLAR_SYSTEM && <TargetingReticle data={targetData} />}

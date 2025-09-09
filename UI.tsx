@@ -1,6 +1,8 @@
+
 // UI.tsx
 
-import React, { useState, useEffect } from 'react';
+// FIX: Import 'useCallback' from 'react' to fix 'Cannot find name' errors.
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
 
 import type { PlayerState, TooltipData, Target, TargetData, DockingData, NavPanelItem, StorageLocation, Module, Ore, Mineral, AnyItem, AgentData, MissionData } from './types';
@@ -140,6 +142,105 @@ export const DockingIndicator: React.FC<{ data: DockingData }> = ({ data }) => {
     );
 };
 
+export const VirtualJoystick: React.FC<{ onMove: (vector: { x: number; y: number }) => void }> = ({ onMove }) => {
+    const baseRef = useRef<HTMLDivElement>(null);
+    const thumbRef = useRef<HTMLDivElement>(null);
+    const draggingState = useRef({
+        isDragging: false,
+        touchId: null as number | null,
+        joystickCenter: { x: 0, y: 0 },
+    });
+
+    const updateThumb = useCallback((touch: Touch | React.Touch) => {
+        if (!baseRef.current || !thumbRef.current) return;
+        const { joystickCenter } = draggingState.current;
+
+        const baseRadius = baseRef.current.offsetWidth / 2;
+        let x = touch.clientX - joystickCenter.x;
+        let y = touch.clientY - joystickCenter.y;
+        
+        const distance = Math.sqrt(x * x + y * y);
+        
+        if (distance > baseRadius) {
+            x = (x / distance) * baseRadius;
+            y = (y / distance) * baseRadius;
+        }
+        
+        thumbRef.current.style.transform = `translate(${x}px, ${y}px)`;
+        
+        onMove({
+            x: x / baseRadius,
+            y: y / baseRadius,
+        });
+    }, [onMove]);
+
+    const handleTouchStart = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+        if (!baseRef.current) return;
+        e.stopPropagation();
+        const touch = e.changedTouches[0];
+        
+        const baseRect = baseRef.current.getBoundingClientRect();
+        draggingState.current = {
+            isDragging: true,
+            touchId: touch.identifier,
+            joystickCenter: {
+                x: baseRect.left + baseRect.width / 2,
+                y: baseRect.top + baseRect.height / 2,
+            }
+        };
+        updateThumb(touch);
+    }, [updateThumb]);
+
+    useEffect(() => {
+        const handleTouchMove = (e: TouchEvent) => {
+            const { isDragging, touchId } = draggingState.current;
+            if (!isDragging) return;
+            const touch = Array.from(e.changedTouches).find(t => t.identifier === touchId);
+            if (touch) {
+                updateThumb(touch);
+            }
+        };
+
+        const handleTouchEnd = (e: TouchEvent) => {
+            const { isDragging, touchId } = draggingState.current;
+            if (!isDragging) return;
+            const touch = Array.from(e.changedTouches).find(t => t.identifier === touchId);
+            if (touch) {
+                draggingState.current.isDragging = false;
+                draggingState.current.touchId = null;
+                if (thumbRef.current) {
+                    thumbRef.current.style.transform = `translate(0px, 0px)`;
+                }
+                onMove({ x: 0, y: 0 });
+            }
+        };
+
+        window.addEventListener('touchmove', handleTouchMove, { passive: false });
+        window.addEventListener('touchend', handleTouchEnd);
+        window.addEventListener('touchcancel', handleTouchEnd);
+        
+        return () => {
+            window.removeEventListener('touchmove', handleTouchMove);
+            window.removeEventListener('touchend', handleTouchEnd);
+            window.removeEventListener('touchcancel', handleTouchEnd);
+        };
+    }, [onMove, updateThumb]);
+
+    return (
+        <div 
+            ref={baseRef}
+            onTouchStart={handleTouchStart}
+            className="absolute bottom-10 left-10 w-32 h-32 bg-white/10 rounded-full flex items-center justify-center z-50"
+            aria-hidden="true"
+        >
+            <div 
+                ref={thumbRef}
+                className="w-16 h-16 bg-white/30 rounded-full pointer-events-none transition-transform duration-75 ease-out"
+            />
+        </div>
+    );
+};
+
 export const HangarModal: React.FC<{
     isOpen: boolean;
     onClose: () => void;
@@ -153,7 +254,7 @@ export const HangarModal: React.FC<{
     const ownedShips = stationHangar ? stationHangar.items.filter(id => id.startsWith('ship_')) : [];
 
     return (
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4/5 max-w-3xl h-[70vh] bg-gray-900/90 border-2 border-gray-500 z-[210] p-5 box-border flex flex-col">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4/5 max-w-3xl h-[70vh] bg-gray-900/90 border-2 border-gray-500 z-[210] p-5 box-border flex flex-col allow-touch-scroll">
             <div className="flex justify-between items-center border-b-2 border-gray-500 pb-2.5 mb-2.5 flex-shrink-0">
                 <h2 className="text-2xl">Ship Hangar</h2>
                 <UIButton onClick={onClose}>Close</UIButton>
@@ -279,7 +380,7 @@ export const ItemHangarModal: React.FC<{
     };
 
     return (
-        <div className="absolute inset-0 bg-gray-900/95 z-[210] p-5 box-border flex flex-col">
+        <div className="absolute inset-0 bg-gray-900/95 z-[210] p-5 box-border flex flex-col allow-touch-scroll">
             <div className="flex justify-between items-center pb-2.5 mb-5 flex-shrink-0">
                 <h2 className="text-2xl">Item Hangar</h2>
                 <UIButton onClick={onClose}>Back to Station</UIButton>
@@ -327,7 +428,7 @@ export const CraftingInterface: React.FC<{
     const canManufacture = selectedBpData && stationHangar ? hasMaterials(stationHangar.materials, selectedBpData.materials) : false;
 
     return (
-        <div className="absolute inset-0 bg-gray-900/95 z-[210] p-5 box-border flex gap-5">
+        <div className="absolute inset-0 bg-gray-900/95 z-[210] p-5 box-border flex gap-5 allow-touch-scroll">
             <div className="bg-gray-800 border border-gray-600 p-4 flex-1 flex flex-col">
                 <h3 className="text-center text-xl mt-0 mb-4">Blueprints in Hangar</h3>
                 <div className="overflow-y-auto">
@@ -470,7 +571,7 @@ export const FittingInterface: React.FC<{
     );
 
     return (
-        <div className="absolute inset-0 bg-gray-900/95 z-[210] p-5 box-border flex gap-5">
+        <div className="absolute inset-0 bg-gray-900/95 z-[210] p-5 box-border flex gap-5 allow-touch-scroll">
             <div className="bg-gray-800 border border-gray-600 p-4 flex-[2] flex flex-col">
                 <div className="flex justify-between items-center mb-4">
                     <h3 className="text-xl mt-0">{currentShip.name} - Fitting</h3>
@@ -591,7 +692,7 @@ export const ReprocessingInterface: React.FC<{
     const yieldPreview = calculateYield();
 
     return (
-        <div className="absolute inset-0 bg-gray-900/95 z-[210] p-5 box-border flex gap-5">
+        <div className="absolute inset-0 bg-gray-900/95 z-[210] p-5 box-border flex gap-5 allow-touch-scroll">
             {/* Left Panel: Available Ores */}
             <div className="bg-gray-800 border border-gray-600 p-4 flex-1 flex flex-col">
                 <h3 className="text-center text-xl mt-0 mb-4">Ores in Hangar</h3>
@@ -791,7 +892,7 @@ export const MarketInterface: React.FC<{
         .sort((a, b) => a.item!.name.localeCompare(b.item!.name));
 
     return (
-        <div className="absolute inset-0 bg-gray-900/95 z-[210] p-5 box-border flex flex-col">
+        <div className="absolute inset-0 bg-gray-900/95 z-[210] p-5 box-border flex flex-col allow-touch-scroll">
             <div className="flex justify-between items-center pb-2.5 mb-5 flex-shrink-0">
                 <h2 className="text-2xl">Market</h2>
                 <UIButton onClick={onClose}>Back to Station</UIButton>
@@ -995,7 +1096,7 @@ export const NavPanel: React.FC<{
     );
 
     return (
-        <div className="absolute top-2.5 right-2.5 w-72 max-h-[80vh] bg-gray-900/80 border border-gray-600 p-2.5 box-border z-5 flex flex-col">
+        <div className="absolute top-2.5 right-2.5 w-72 max-h-[80vh] bg-gray-900/80 border border-gray-600 p-2.5 box-border z-5 flex flex-col allow-touch-scroll">
             <h3 className="mt-0 text-center flex-shrink-0 text-lg">System Overview</h3>
             <div className="overflow-y-auto">
                 <h4 className="mt-2.5 mb-1.5 border-b border-gray-600 pb-1.5 text-base">Celestial Bodies</h4>
@@ -1089,7 +1190,7 @@ export const ShipStatsUI: React.FC<{ playerState: PlayerState }> = ({ playerStat
     const cargoPercentage = totalCapacity > 0 ? (currentVolume / totalCapacity) * 100 : 0;
     
     return (
-        <div className="w-72 bg-gray-900/80 border border-gray-600 p-2.5 box-border flex flex-col">
+        <div className="w-72 bg-gray-900/80 border border-gray-600 p-2.5 box-border flex flex-col allow-touch-scroll">
             <h3 className="mt-0 text-center flex-shrink-0 text-lg">Ship Stats</h3>
             <div className="overflow-y-auto text-sm">
                 <ul className="list-none p-0 m-0">
@@ -1130,18 +1231,21 @@ export const ShipStatsUI: React.FC<{ playerState: PlayerState }> = ({ playerStat
 export const SelectedTargetUI: React.FC<{
     target: Target | null;
     miningState: { targetId: string, progress: number } | null;
+    isAutoMining: boolean;
     onWarp: () => void;
     onMine: () => void;
+    onAutoMine: () => void;
     onStopMine: () => void;
     onLookAt: () => void;
     onDeselect: () => void;
     setTooltip: (content: string, event: React.MouseEvent) => void;
     clearTooltip: () => void;
-}> = ({ target, miningState, onWarp, onMine, onStopMine, onLookAt, onDeselect, setTooltip, clearTooltip }) => {
+    isDockable: boolean;
+    onDock: () => void;
+}> = ({ target, miningState, isAutoMining, onWarp, onMine, onAutoMine, onStopMine, onLookAt, onDeselect, setTooltip, clearTooltip, isDockable, onDock }) => {
     if (!target) return null;
 
-    const isMiningThis = miningState?.targetId === target.uuid;
-    const miningProgress = isMiningThis ? miningState.progress : 0;
+    const isActivelyMining = miningState !== null || isAutoMining;
     const canMine = target.type === 'asteroid' && target.distance <= MINING_RANGE;
     const canWarp = target.distance > WARP_MIN_DISTANCE;
 
@@ -1185,28 +1289,74 @@ export const SelectedTargetUI: React.FC<{
                     </svg>
                 </button>
 
-                {/* Mine Button */}
+                {/* Dock Button */}
+                {target.type === 'station' && (
+                    <button
+                        onClick={onDock}
+                        disabled={!isDockable}
+                        className="bg-gray-700/80 rounded-lg border border-gray-400 text-white hover:bg-gray-600/90 disabled:bg-gray-800/50 disabled:text-gray-500 disabled:cursor-not-allowed"
+                        onMouseEnter={(e) => setTooltip('Dock at Station', e)}
+                        onMouseLeave={clearTooltip}
+                        aria-label="Dock at Station"
+                    >
+                        <svg className={iconStyle} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12 2L12 8"></path>
+                          <path d="M8 5L12 1L16 5"></path>
+                          <path d="M3 10C3 7.23858 5.23858 5 8 5H16C18.7614 5 21 7.23858 21 10V19C21 20.6569 19.6569 22 18 22H6C4.34315 22 3 20.6569 3 19V10Z"></path>
+                        </svg>
+                    </button>
+                )}
+
+                {/* Mining Buttons */}
                 {target.type === 'asteroid' && (
-                    <div className="relative">
-                         <button
-                            onClick={isMiningThis ? onStopMine : onMine}
-                            disabled={!canMine && !isMiningThis}
-                            className={`relative bg-gray-700/80 rounded-full border border-gray-400 text-white hover:bg-gray-600/90 disabled:bg-gray-800/50 disabled:text-gray-500 disabled:cursor-not-allowed overflow-hidden ${isMiningThis ? '!border-red-500' : ''}`}
-                            onMouseEnter={(e) => setTooltip(isMiningThis ? 'Stop Mining' : 'Mine Asteroid', e)}
-                            onMouseLeave={clearTooltip}
-                            aria-label="Mine Asteroid"
-                        >
-                            <svg className={`${iconStyle} relative z-10`} viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M11 20.66V3.33L11.53 3.14C13.43 2.5 15 3.87 15 5.76V11H13V5.76C13 5.21 12.63 4.9 12.11 5.05L11 5.33V20.66L10.88 20.95C9 21.57 7.5 20.2 7.5 18.24V13H9.5V18.24C9.5 18.79 9.87 19.1 10.39 18.95L11 18.66V20.66Z" />
-                            </svg>
-                            {isMiningThis && (
-                                <div 
-                                    className="absolute top-0 left-0 w-full h-full rounded-full z-0"
-                                    style={{ background: `conic-gradient(rgba(34,197,94,0.6) ${miningProgress}%, transparent ${miningProgress}%)` }}
-                                />
-                            )}
-                        </button>
-                    </div>
+                    isActivelyMining ? (
+                        <div className="relative">
+                            <button
+                                onClick={onStopMine}
+                                className="relative bg-red-800/80 rounded-full border border-red-400 text-white hover:bg-red-700/90 overflow-hidden"
+                                onMouseEnter={(e) => setTooltip(isAutoMining ? 'Stop Auto-Mining' : 'Stop Mining', e)}
+                                onMouseLeave={clearTooltip}
+                                aria-label="Stop Mining"
+                            >
+                                <svg className={`${iconStyle} relative z-10`} viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M6 6h12v12H6z"/>
+                                </svg>
+                                {miningState && (
+                                    <div 
+                                        className="absolute top-0 left-0 w-full h-full rounded-full z-0"
+                                        style={{ background: `conic-gradient(rgba(34,197,94,0.6) ${miningState.progress}%, transparent ${miningState.progress}%)` }}
+                                    />
+                                )}
+                            </button>
+                        </div>
+                    ) : (
+                        <>
+                            <button
+                                onClick={onMine}
+                                disabled={!canMine}
+                                className="bg-gray-700/80 rounded-full border border-gray-400 text-white hover:bg-gray-600/90 disabled:bg-gray-800/50 disabled:text-gray-500 disabled:cursor-not-allowed"
+                                onMouseEnter={(e) => setTooltip('Mine Asteroid (Single Cycle)', e)}
+                                onMouseLeave={clearTooltip}
+                                aria-label="Mine Asteroid"
+                            >
+                                <svg className={iconStyle} viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M11 20.66V3.33L11.53 3.14C13.43 2.5 15 3.87 15 5.76V11H13V5.76C13 5.21 12.63 4.9 12.11 5.05L11 5.33V20.66L10.88 20.95C9 21.57 7.5 20.2 7.5 18.24V13H9.5V18.24C9.5 18.79 9.87 19.1 10.39 18.95L11 18.66V20.66Z" />
+                                </svg>
+                            </button>
+                            <button
+                                onClick={onAutoMine}
+                                disabled={!canMine}
+                                className="bg-gray-700/80 rounded-full border border-gray-400 text-white hover:bg-gray-600/90 disabled:bg-gray-800/50 disabled:text-gray-500 disabled:cursor-not-allowed"
+                                onMouseEnter={(e) => setTooltip('Mine Repetitively', e)}
+                                onMouseLeave={clearTooltip}
+                                aria-label="Mine Repetitively"
+                            >
+                                <svg className={iconStyle} viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/>
+                                </svg>
+                            </button>
+                        </>
+                    )
                 )}
             </div>
             
@@ -1225,7 +1375,7 @@ export const MissionTrackerUI: React.FC<{ playerState: PlayerState }> = ({ playe
     }
 
     return (
-        <div className="w-72 max-h-[30vh] bg-gray-900/80 border border-gray-600 p-2.5 box-border flex flex-col">
+        <div className="w-72 max-h-[30vh] bg-gray-900/80 border border-gray-600 p-2.5 box-border flex flex-col allow-touch-scroll">
             <h3 className="mt-0 text-center flex-shrink-0 text-lg">Mission Tracker</h3>
             <div className="overflow-y-auto text-sm space-y-3">
                 {playerState.activeMissions.map(mission => {
@@ -1409,7 +1559,7 @@ export const AgentInterface: React.FC<{
     const missionList = activeMissionForThisAgent ? [activeMissionForThisAgent] : (cachedMissions || []);
     
     return (
-        <div className="absolute inset-0 bg-gray-900/95 z-[210] p-5 box-border flex gap-5">
+        <div className="absolute inset-0 bg-gray-900/95 z-[210] p-5 box-border flex gap-5 allow-touch-scroll">
              <div className="bg-gray-800 border border-gray-600 p-4 w-1/3 flex flex-col">
                 <h3 className="text-center text-xl mt-0 mb-4">Missions</h3>
                 {isLoading && <p className="text-center text-cyan-400">Contacting agent...</p>}

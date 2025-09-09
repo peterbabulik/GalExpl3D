@@ -395,7 +395,7 @@ export const BlueprintData: Record<string, Blueprint> = {
             'min_nocxium': 100000,
             'min_zydrine': 20000,
             'min_megacyte': 8000,
-            'min_morphite': 500
+//            'min_morphite': 500
         },
         skills: {
             'industrySkill': 5,
