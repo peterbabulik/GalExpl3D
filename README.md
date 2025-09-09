@@ -100,7 +100,7 @@ This project is a testament to the power of a lean, focused technology stack.
 
 **[Live Demo](https://peterbabulik.github.io/GalExpl3D/)**
 
-### Basic Controls
+### Basic Controls / no Touch implemented yet / you cant dock (need enter key for now!!!)
 *   **In Space:**
     *   `WASD` + `Space` / `Shift`: Move/Strafe your ship.
     *   `QE`: Roll your ship.
