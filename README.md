@@ -5,19 +5,44 @@
 
 
 **[Live Demo](https://peterbabulik.github.io/GalExpl3D/)**
+
 ## Run Locally
 
-**Prerequisites:**  Node.js
+Follow these steps to set up and run a local instance of the GalExpl3D project.
 
+### 1. Clone the Repository
+First, clone the project to your local machine:
+```sh
+git clone https://github.com/peterbabulik/GalExpl3D.git
+```
+```sh
+cd GalExpl3D
+```
 
-1. Install dependencies:
-1.1   `git clone https://github.com/peterbabulik/GalExpl3D.git`
-1.2   `npm install`
-1.3   `npm install vite @google/genai`
-   
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+### 2. Install Dependencies
+Install all the necessary npm packages listed in `package.json`:
+```sh
+npm install
+```
+```sh
+npm install vite @google/genai
+```
+
+### 3. Configure Gemini API Key
+To enable the AI-powered mission generation, you need to provide your own Google Gemini API key.
+
+1.  Create a new file in the root of the project named `.env`.
+2.  Open the `.env` file and add the following line, replacing `YOUR_API_KEY_HERE` with your actual key:
+    ```
+    GEMINI_API_KEY=YOUR_API_KEY_HERE
+    ```
+
+### 4. Run the Application
+Start the local development server:
+```sh
+npm run dev
+```
+The application will now be running and accessible at [http://localhost:5173/](http://localhost:5173/) (or the next available port).```
 
 
 # GalExpl3D - A Gemini-Powered 3D Space Economy Simulation
