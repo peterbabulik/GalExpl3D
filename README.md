@@ -91,9 +91,13 @@ GalExpl3D is built around a complete industrial gameplay loop, allowing players 
 ## Technology Stack
 
 This project is a testament to the power of a lean, focused technology stack.
+
 ***React: Powers the entire component-based UI, providing a reactive and efficient user experience.
+
 ***TypeScript: Ensures type safety and scalability across the complex codebase.
+
 ***Three.js: The core of the 3D rendering engine for all in-space visuals.
+
 ***Google Gemini AI: Dynamically generates unique NPC agent backstories and mission text for endless, narrative-driven content.
 
 ## How to Play
