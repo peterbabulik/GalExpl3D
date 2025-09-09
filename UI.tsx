@@ -870,6 +870,56 @@ export const MarketInterface: React.FC<{
     );
 }
 
+export const StationHelpOverlay: React.FC<{onClose: () => void}> = ({onClose}) => {
+    // Approximate vertical center of the button list, adjusted for the title above it.
+    const listCenterY = '55%';
+    // Vertical distance between the center of each button.
+    const buttonStep = 3.25; // in rem
+    // Calculates the vertical center of a button based on its index (1-based).
+    const buttonCenterY = (index: number) => `calc(${listCenterY} + ${(index - 4.5) * buttonStep}rem)`;
+
+    return (
+        <div className="absolute inset-0 z-[201]" onClick={onClose}>
+            <div className="relative w-full h-full pointer-events-none text-lg font-semibold">
+                {/* RIGHT SIDE (BLUE) - Explains how to get resources */}
+                <div className="absolute text-blue-400 text-left" style={{ top: `calc(${buttonCenterY(1)} - 0.7rem)`, left: 'calc(50% + 18rem)' }}>
+                    Mine Asteroids
+                </div>
+                <div className="absolute h-px w-[9rem] bg-blue-400" style={{ top: buttonCenterY(1), left: 'calc(50% + 9rem)' }}></div>
+                <div className="absolute w-px h-[19.5rem] bg-blue-400" style={{ top: buttonCenterY(1), left: 'calc(50% + 9rem)' }}></div>
+
+                <div className="absolute text-blue-400 text-left" style={{ top: `calc(${buttonCenterY(3)} - 0.7rem)`, left: 'calc(50% + 18rem)' }}>
+                    Move Asteroids from<br/>Ship to Station
+                </div>
+                <div className="absolute h-px w-[9rem] bg-blue-400" style={{ top: buttonCenterY(3), left: 'calc(50% + 9rem)' }}></div>
+
+                <div className="absolute text-blue-400 text-left leading-tight" style={{ top: `calc(${buttonCenterY(7)} - 0.5rem)`, left: 'calc(50% + 18rem)' }}>
+                    Sell Asteroids for ISK<br/>Buy Blueprints
+                </div>
+                <div className="absolute h-px w-[9rem] bg-blue-400" style={{ top: buttonCenterY(7), left: 'calc(50% + 9rem)' }}></div>
+
+                {/* LEFT SIDE (RED) - Explains what to do with resources */}
+                <div className="absolute text-red-400 text-right" style={{ top: `calc(${buttonCenterY(4)} - 0.7rem)`, right: 'calc(50% + 18rem)' }}>
+                    Fitt to Ship
+                </div>
+                <div className="absolute h-px w-[9rem] bg-red-400" style={{ top: buttonCenterY(4), right: 'calc(50% + 9rem)' }}></div>
+                <div className="absolute w-px h-[9.75rem] bg-red-400" style={{ top: buttonCenterY(4), right: 'calc(50% + 9rem)' }}></div>
+
+                <div className="absolute text-red-400 text-right" style={{ top: `calc(${buttonCenterY(5)} - 0.7rem)`, right: 'calc(50% + 18rem)' }}>
+                    Craft
+                </div>
+                <div className="absolute h-px w-[9rem] bg-red-400" style={{ top: buttonCenterY(5), right: 'calc(50% + 9rem)' }}></div>
+
+                <div className="absolute text-red-400 text-right" style={{ top: `calc(${buttonCenterY(6)} - 0.7rem)`, right: 'calc(50% + 18rem)' }}>
+                    Reprocess
+                </div>
+                <div className="absolute h-px w-[9rem] bg-red-400" style={{ top: buttonCenterY(6), right: 'calc(50% + 9rem)' }}></div>
+            </div>
+        </div>
+    );
+};
+
+
 export const StationInterface: React.FC<{
     stationName: string;
     onUndock: () => void;
@@ -880,9 +930,21 @@ export const StationInterface: React.FC<{
     onOpenReprocessing: () => void;
     onOpenMarket: () => void;
     onOpenAgent: () => void;
-}> = ({ stationName, onUndock, onOpenCrafting, onOpenShipHangar, onOpenItemHangar, onOpenFitting, onOpenReprocessing, onOpenMarket, onOpenAgent }) => {
+    showHelp: boolean;
+    onToggleHelp: () => void;
+}> = ({ stationName, onUndock, onOpenCrafting, onOpenShipHangar, onOpenItemHangar, onOpenFitting, onOpenReprocessing, onOpenMarket, onOpenAgent, showHelp, onToggleHelp }) => {
     return (
         <div className="absolute inset-0 bg-gray-900/95 z-[200] p-12 box-border flex flex-col items-center justify-center">
+            {showHelp && <StationHelpOverlay onClose={onToggleHelp} />}
+             <div className="absolute top-5 right-5 z-[202]">
+                <button 
+                    onClick={onToggleHelp} 
+                    className="w-10 h-10 bg-gray-700/80 rounded-full border border-gray-400 text-white text-2xl font-bold flex items-center justify-center hover:bg-gray-600/90"
+                    aria-label="Toggle Help"
+                >
+                    ?
+                </button>
+            </div>
             <h2 className="text-4xl mb-10 text-center">Docked at {stationName}</h2>
             <div className="flex flex-col items-center gap-4">
                 <UIButton onClick={onUndock} className="w-64 !text-base">Back to Space (Undock)</UIButton>
@@ -962,71 +1024,69 @@ export const NavPanel: React.FC<{
     );
 };
 
-export const ShipCargoUI: React.FC<{ cargo: StorageLocation }> = ({ cargo }) => {
-    const hasItems = Object.keys(cargo.materials).length > 0 || cargo.items.length > 0;
-
-    return (
-        <div className="w-72 max-h-[45vh] bg-gray-900/80 border border-gray-600 p-2.5 box-border flex flex-col">
-            <h3 className="mt-0 text-center flex-shrink-0 text-lg">Ship Cargo</h3>
-            <div className="overflow-y-auto">
-                {!hasItems && <p className="text-gray-500 text-sm text-center py-2">Cargo hold is empty.</p>}
-                <ul className="list-none p-0 m-0">
-                    {Object.entries(cargo.materials)
-                        .sort(([matA], [matB]) => (getItemData(matA)?.name || matA).localeCompare(getItemData(matB)?.name || matB))
-                        .map(([matId, qty]) => (
-                            <li key={matId} className="flex justify-between py-0.5 px-1 text-sm">
-                                <span className="whitespace-nowrap overflow-hidden text-ellipsis pr-2">{getItemData(matId)?.name || matId}</span>
-                                <span>{qty.toLocaleString()}</span>
-                            </li>
-                        ))
-                    }
-                </ul>
-            </div>
-        </div>
-    );
-};
-
 export const ShipStatsUI: React.FC<{ playerState: PlayerState }> = ({ playerState }) => {
     const currentShip = SHIP_DATA[playerState.currentShipId];
     if (!currentShip) return null;
 
-    // Calculate stats
-    let totalMiningYield = 0;
+    // --- STATS CALCULATION ---
     let shieldHP = currentShip.attributes.shield;
     let armorHP = currentShip.attributes.armor;
     const hullHP = currentShip.attributes.hull;
 
-    const allModules = [
+    const minerModuleIds = playerState.currentShipFitting.high.filter((id): id is string => !!id && id.includes('miner'));
+    const baseModuleYield = minerModuleIds.reduce((total, modId) => {
+        const moduleData = getItemData(modId) as Module;
+        return total + (moduleData?.attributes?.miningYield || 0);
+    }, 0);
+
+    // Apply ship bonuses to mining yield
+    let yieldMultiplier = 1.0;
+    currentShip.bonuses.forEach(bonus => {
+        if (bonus.type === 'miningYield' && bonus.flat) {
+            yieldMultiplier += bonus.value / 100;
+        }
+    });
+    const totalMiningYield = baseModuleYield * yieldMultiplier;
+
+    // Calculate bonuses from all fitted modules
+    const allFittedModules = [
         ...playerState.currentShipFitting.high,
         ...playerState.currentShipFitting.medium,
         ...playerState.currentShipFitting.low,
     ].filter((id): id is string => !!id);
 
-    allModules.forEach(moduleId => {
+    allFittedModules.forEach(moduleId => {
         const moduleData = getItemData(moduleId) as Module;
-        if (!moduleData || !moduleData.attributes) return;
-
-        if (moduleData.attributes.miningYield) {
-            totalMiningYield += moduleData.attributes.miningYield;
-        }
-        if (moduleData.attributes.shieldHPBonus) {
-            shieldHP += moduleData.attributes.shieldHPBonus;
-        }
-        if (moduleData.attributes.armorHPBonus) {
-            armorHP += moduleData.attributes.armorHPBonus;
-        }
+        if (!moduleData?.attributes) return;
+        if (moduleData.attributes.shieldHPBonus) shieldHP += moduleData.attributes.shieldHPBonus;
+        if (moduleData.attributes.armorHPBonus) armorHP += moduleData.attributes.armorHPBonus;
     });
 
     const cycleTime = (() => {
-        const firstMinerId = playerState.currentShipFitting.high.find(id => id?.includes('miner'));
-        if (firstMinerId) {
-            const firstMiner = getItemData(firstMinerId) as Module;
+        if (minerModuleIds.length > 0) {
+            const firstMiner = getItemData(minerModuleIds[0]) as Module;
             return firstMiner?.attributes?.cycleTime || 60;
         }
         return 60;
     })();
-
     const miningYieldPerMinute = totalMiningYield > 0 ? (totalMiningYield * (60 / cycleTime)) : 0;
+    
+    // Calculate Cargo stats
+    const totalCapacity = currentShip.attributes.cargoCapacity + (currentShip.attributes.oreHold || 0);
+    let currentVolume = 0;
+    for (const matId in playerState.shipCargo.materials) {
+        const itemData = getItemData(matId);
+        if (itemData?.volume) {
+            currentVolume += playerState.shipCargo.materials[matId] * itemData.volume;
+        }
+    }
+    for (const itemId of playerState.shipCargo.items) {
+        const itemData = getItemData(itemId);
+        if (itemData?.volume) {
+            currentVolume += itemData.volume;
+        }
+    }
+    const cargoPercentage = totalCapacity > 0 ? (currentVolume / totalCapacity) * 100 : 0;
     
     return (
         <div className="w-72 bg-gray-900/80 border border-gray-600 p-2.5 box-border flex flex-col">
@@ -1046,15 +1106,17 @@ export const ShipStatsUI: React.FC<{ playerState: PlayerState }> = ({ playerStat
                         <span>{hullHP.toLocaleString()}</span>
                     </li>
                     <li className="flex justify-between py-0.5 px-1 border-t border-gray-700 mt-1 pt-1">
-                        <span>Cargo Capacity</span>
-                        <span>{currentShip.attributes.cargoCapacity.toLocaleString()} m³</span>
+                        <span>Cargo Hold</span>
+                        <span>{currentVolume.toFixed(1)} / {totalCapacity.toLocaleString()} m³</span>
                     </li>
-                    {currentShip.attributes.oreHold && (
-                         <li className="flex justify-between py-0.5 px-1">
-                            <span>Ore Hold</span>
-                            <span>{currentShip.attributes.oreHold.toLocaleString()} m³</span>
-                        </li>
-                    )}
+                    <li className="px-1 py-0.5">
+                        <div className="w-full bg-gray-700 h-2.5 rounded-sm">
+                            <div 
+                                className="bg-cyan-500 h-2.5 rounded-sm" 
+                                style={{ width: `${cargoPercentage}%` }}
+                            ></div>
+                        </div>
+                    </li>
                      <li className="flex justify-between py-0.5 px-1 border-t border-gray-700 mt-1 pt-1">
                         <span>Mining Yield</span>
                         <span>{miningYieldPerMinute.toLocaleString(undefined, {maximumFractionDigits: 0})} / min</span>

@@ -7,6 +7,27 @@ export const BlueprintData: Record<string, Blueprint> = {
     // ==================== SHIP BLUEPRINTS ====================
     
     // Frigates
+    'bp_rookie': {
+        id: 'bp_rookie',
+        name: 'Rookie Ship Blueprint',
+        category: 'Blueprint',
+        outputItem: 'ship_rookie',
+        outputQuantity: 1,
+        basePrice: 10000,
+        manufacturingTime: 600, // 10 minutes
+        materials: {
+            'min_tritanium': 5000,
+            'min_pyerite': 1000,
+        },
+        skills: {
+            'industrySkill': 1,
+        },
+        facilityBonus: {
+            'station': 1.0,
+            'engineeringComplex': 0.9,
+            'advancedEngineering': 0.85
+        }
+    },
     'bp_rifter': {
         id: 'bp_rifter',
         name: 'Rifter Blueprint',
@@ -32,7 +53,6 @@ export const BlueprintData: Record<string, Blueprint> = {
             'advancedEngineering': 0.85
         }
     },
-    
     'bp_merlin': {
         id: 'bp_merlin',
         name: 'Merlin Blueprint',
@@ -58,7 +78,56 @@ export const BlueprintData: Record<string, Blueprint> = {
             'advancedEngineering': 0.85
         }
     },
-    
+    'bp_incursus': {
+        id: 'bp_incursus',
+        name: 'Incursus Blueprint',
+        category: 'Blueprint',
+        outputItem: 'ship_incursus',
+        outputQuantity: 1,
+        basePrice: 1000000,
+        manufacturingTime: 3600,
+        materials: {
+            'min_tritanium': 29000,
+            'min_pyerite': 6500,
+            'min_mexallon': 1800,
+            'min_isogen': 370,
+            'min_nocxium': 38
+        },
+        skills: {
+            'industrySkill': 1,
+            'gallenteStarshipEngineering': 1
+        },
+        facilityBonus: {
+            'station': 1.0,
+            'engineeringComplex': 0.9,
+            'advancedEngineering': 0.85
+        }
+    },
+    'bp_punisher': {
+        id: 'bp_punisher',
+        name: 'Punisher Blueprint',
+        category: 'Blueprint',
+        outputItem: 'ship_punisher',
+        outputQuantity: 1,
+        basePrice: 1000000,
+        manufacturingTime: 3600,
+        materials: {
+            'min_tritanium': 31000,
+            'min_pyerite': 5500,
+            'min_mexallon': 1600,
+            'min_isogen': 390,
+            'min_nocxium': 42
+        },
+        skills: {
+            'industrySkill': 1,
+            'amarrStarshipEngineering': 1
+        },
+        facilityBonus: {
+            'station': 1.0,
+            'engineeringComplex': 0.9,
+            'advancedEngineering': 0.85
+        }
+    },
     'bp_venture': {
         id: 'bp_venture',
         name: 'Venture Blueprint',
@@ -78,6 +147,34 @@ export const BlueprintData: Record<string, Blueprint> = {
         skills: {
             'industrySkill': 1,
             'oreIndustrialSkill': 1
+        },
+        facilityBonus: {
+            'station': 1.0,
+            'engineeringComplex': 0.9,
+            'advancedEngineering': 0.85
+        }
+    },
+
+    // Destroyers
+    'bp_thrasher': {
+        id: 'bp_thrasher',
+        name: 'Thrasher Blueprint',
+        category: 'Blueprint',
+        outputItem: 'ship_thrasher',
+        outputQuantity: 1,
+        basePrice: 3000000,
+        manufacturingTime: 7200, // 2 hours
+        materials: {
+            'min_tritanium': 120000,
+            'min_pyerite': 30000,
+            'min_mexallon': 7500,
+            'min_isogen': 1500,
+            'min_nocxium': 150,
+            'min_zydrine': 50
+        },
+        skills: {
+            'industrySkill': 2,
+            'minmatarStarshipEngineering': 2
         },
         facilityBonus: {
             'station': 1.0,
@@ -142,6 +239,91 @@ export const BlueprintData: Record<string, Blueprint> = {
             'advancedEngineering': 0.85
         }
     },
+
+    // Battlecruisers
+    'bp_hurricane': {
+        id: 'bp_hurricane',
+        name: 'Hurricane Blueprint',
+        category: 'Blueprint',
+        outputItem: 'ship_hurricane',
+        outputQuantity: 1,
+        basePrice: 40000000,
+        manufacturingTime: 21600, // 6 hours
+        materials: {
+            'min_tritanium': 5000000,
+            'min_pyerite': 1200000,
+            'min_mexallon': 300000,
+            'min_isogen': 60000,
+            'min_nocxium': 15000,
+            'min_zydrine': 3000,
+            'min_megacyte': 1200
+        },
+        skills: {
+            'industrySkill': 4,
+            'minmatarStarshipEngineering': 4
+        },
+        facilityBonus: {
+            'station': 1.0,
+            'engineeringComplex': 0.9,
+            'advancedEngineering': 0.85
+        }
+    },
+    
+    // Battleships
+    'bp_tempest': {
+        id: 'bp_tempest',
+        name: 'Tempest Blueprint',
+        category: 'Blueprint',
+        outputItem: 'ship_tempest',
+        outputQuantity: 1,
+        basePrice: 100000000,
+        manufacturingTime: 36000, // 10 hours
+        materials: {
+            'min_tritanium': 7000000,
+            'min_pyerite': 1800000,
+            'min_mexallon': 450000,
+            'min_isogen': 90000,
+            'min_nocxium': 22500,
+            'min_zydrine': 4500,
+            'min_megacyte': 1800
+        },
+        skills: {
+            'industrySkill': 5,
+            'minmatarStarshipEngineering': 5
+        },
+        facilityBonus: {
+            'station': 1.0,
+            'engineeringComplex': 0.9,
+            'advancedEngineering': 0.85
+        }
+    },
+    'bp_dominix': {
+        id: 'bp_dominix',
+        name: 'Dominix Blueprint',
+        category: 'Blueprint',
+        outputItem: 'ship_dominix',
+        outputQuantity: 1,
+        basePrice: 110000000,
+        manufacturingTime: 36000,
+        materials: {
+            'min_tritanium': 7500000,
+            'min_pyerite': 1600000,
+            'min_mexallon': 500000,
+            'min_isogen': 100000,
+            'min_nocxium': 25000,
+            'min_zydrine': 5000,
+            'min_megacyte': 2000
+        },
+        skills: {
+            'industrySkill': 5,
+            'gallenteStarshipEngineering': 5
+        },
+        facilityBonus: {
+            'station': 1.0,
+            'engineeringComplex': 0.9,
+            'advancedEngineering': 0.85
+        }
+    },
     
     // Mining Barge
     'bp_retriever': {
@@ -164,6 +346,60 @@ export const BlueprintData: Record<string, Blueprint> = {
         skills: {
             'industrySkill': 4,
             'oreIndustrialSkill': 3
+        },
+        facilityBonus: {
+            'station': 1.0,
+            'engineeringComplex': 0.9,
+            'advancedEngineering': 0.85
+        }
+    },
+    
+    // Industrial Ships
+    'bp_badger': {
+        id: 'bp_badger',
+        name: 'Badger Blueprint',
+        category: 'Blueprint',
+        outputItem: 'ship_badger',
+        outputQuantity: 1,
+        basePrice: 2000000,
+        manufacturingTime: 5400, // 1.5 hours
+        materials: {
+            'min_tritanium': 90000,
+            'min_pyerite': 25000,
+            'min_mexallon': 6000,
+            'min_isogen': 1200
+        },
+        skills: {
+            'industrySkill': 2,
+            'caldariStarshipEngineering': 1
+        },
+        facilityBonus: {
+            'station': 1.0,
+            'engineeringComplex': 0.9,
+            'advancedEngineering': 0.85
+        }
+    },
+    'bp_orca': {
+        id: 'bp_orca',
+        name: 'Orca Blueprint',
+        category: 'Blueprint',
+        outputItem: 'ship_orca',
+        outputQuantity: 1,
+        basePrice: 500000000,
+        manufacturingTime: 172800, // 48 hours
+        materials: {
+            'min_tritanium': 40000000,
+            'min_pyerite': 8000000,
+            'min_mexallon': 2000000,
+            'min_isogen': 400000,
+            'min_nocxium': 100000,
+            'min_zydrine': 20000,
+            'min_megacyte': 8000,
+            'min_morphite': 500
+        },
+        skills: {
+            'industrySkill': 5,
+            'oreIndustrialSkill': 5
         },
         facilityBonus: {
             'station': 1.0,

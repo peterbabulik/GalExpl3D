@@ -22,7 +22,6 @@ import {
     MarketInterface,
     StationInterface,
     NavPanel,
-    ShipCargoUI,
     ShipStatsUI,
     SelectedTargetUI,
     UIButton,
@@ -83,6 +82,8 @@ export default function App() {
     const [targetData, setTargetData] = useState<TargetData>({ object: null, screenX: 0, screenY: 0, selectedTarget: null });
     const [dockingData, setDockingData] = useState<DockingData>({ visible: false, distance: 0 });
     const [navPanelData, setNavPanelData] = useState<NavPanelItem[]>([]);
+    const [showStationHelp, setShowStationHelp] = useState(false);
+    const [showCargoFullMessage, setShowCargoFullMessage] = useState(false);
     
     // Gemini-related state (cached data)
     const [agents, setAgents] = useState<Record<string, AgentData>>({});
@@ -136,20 +137,36 @@ export default function App() {
     const handleActivateShip = (newShipId: string) => {
         const stationId = getStationId(activeSystemId!, gameDataRef.current.dockedStation!.userData.name);
         if (!stationId) return;
-
+    
         setPlayerState(p => {
             const newState = JSON.parse(JSON.stringify(p));
-            const stationHangar = newState.stationHangars[stationId];
-            if (!stationHangar) return p;
-
+            const stationHangar = newState.stationHangars[stationId] || { items: [], materials: {} };
+            newState.stationHangars[stationId] = stationHangar; // Ensure it's assigned if it was created
+    
+            // Unload cargo and fittings from old ship
             const oldShipId = p.currentShipId;
             const oldShipFitting = p.currentShipFitting;
-            
+            const oldShipCargo = p.shipCargo;
+    
+            // Move fitted modules to hangar
             Object.values(oldShipFitting).flat().forEach(moduleId => {
                 if (moduleId) stationHangar.items.push(moduleId);
             });
+    
+            // Move items from cargo to hangar
+            oldShipCargo.items.forEach(itemId => {
+                stationHangar.items.push(itemId);
+            });
+    
+            // Move materials from cargo to hangar
+            for (const matId in oldShipCargo.materials) {
+                stationHangar.materials[matId] = (stationHangar.materials[matId] || 0) + oldShipCargo.materials[matId];
+            }
+    
+            // Add old ship to hangar
             stationHangar.items.push(oldShipId);
-
+            
+            // Remove new ship from hangar
             const newShipIndex = stationHangar.items.indexOf(newShipId);
             if (newShipIndex > -1) {
                 stationHangar.items.splice(newShipIndex, 1);
@@ -157,9 +174,9 @@ export default function App() {
                 console.error("Activated ship not found in hangar!");
                 return p;
             }
-
+    
+            // Set up the new ship
             newState.currentShipId = newShipId;
-
             const newShipData = SHIP_DATA[newShipId];
             newState.currentShipFitting = {
                 high: Array(newShipData.slots.high).fill(null),
@@ -167,6 +184,13 @@ export default function App() {
                 low: Array(newShipData.slots.low).fill(null),
                 rig: Array(newShipData.slots.rig).fill(null),
             };
+            
+            // Reset ship cargo for the new ship
+            newState.shipCargo = {
+                items: [],
+                materials: {},
+            };
+    
             return newState;
         });
         setShipHangarOpen(false);
@@ -325,6 +349,28 @@ export default function App() {
             alert("No mining laser fitted!");
             return;
         }
+    
+        // Check for cargo space before starting a cycle
+        const currentShipData = SHIP_DATA[playerState.currentShipId];
+        if (!currentShipData) return;
+        
+        const totalCapacity = currentShipData.attributes.cargoCapacity + (currentShipData.attributes.oreHold || 0);
+        
+        let currentCargoVolume = 0;
+        for (const matId in playerState.shipCargo.materials) {
+            const itemData = getItemData(matId);
+            currentCargoVolume += (itemData?.volume || 0) * playerState.shipCargo.materials[matId];
+        }
+        for (const itemId of playerState.shipCargo.items) {
+            const itemData = getItemData(itemId);
+            currentCargoVolume += (itemData?.volume || 0);
+        }
+        
+        if (currentCargoVolume >= totalCapacity) {
+            setShowCargoFullMessage(true);
+            setTimeout(() => setShowCargoFullMessage(false), 3000);
+            return;
+        }
         
         const firstMinerModule = getItemData(minerModuleIds[0]) as Module;
         const cycleTime = (firstMinerModule.attributes.cycleTime || 60) * 1000;
@@ -336,38 +382,82 @@ export default function App() {
             startTime: Date.now(), 
             cycleTime: cycleTime 
         });
-
+    
         miningTimeoutRef.current = window.setTimeout(() => {
             setPlayerState(p => {
                 const targetObject = gameDataRef.current.asteroids.find(a => a.uuid === targetData.selectedTarget!.uuid);
-                if (!targetObject) return p;
-
+                if (!targetObject || targetObject.userData.oreQuantity <= 0) return p;
+    
                 const oreData = targetObject.userData.ore as Ore;
+                const oreVolumePerUnit = oreData.volume || 0.1;
                 
-                const totalMinedAmount = minerModuleIds.reduce((total, modId) => {
+                const shipData = SHIP_DATA[p.currentShipId];
+                if (!shipData) return p;
+
+                const baseModuleYield = minerModuleIds.reduce((total, modId) => {
                     const moduleData = getItemData(modId) as Module;
                     return total + (moduleData?.attributes?.miningYield || 0);
                 }, 0);
-
+                
+                let totalYieldMultiplier = 1.0;
+                if (shipData.bonuses) {
+                    shipData.bonuses.forEach(bonus => {
+                        if (bonus.type === 'miningYield' && bonus.flat) {
+                            totalYieldMultiplier += bonus.value / 100;
+                        }
+                    });
+                }
+                
+                const potentialYield = baseModuleYield * totalYieldMultiplier;
+                const amountToMine = Math.min(potentialYield, targetObject.userData.oreQuantity);
+                if (amountToMine <= 0) return p;
+    
+                const capacity = shipData.attributes.cargoCapacity + (shipData.attributes.oreHold || 0);
+                let currentVolume = 0;
+                for (const matId in p.shipCargo.materials) {
+                    currentVolume += (getItemData(matId)?.volume || 0) * p.shipCargo.materials[matId];
+                }
+                for (const itemId of p.shipCargo.items) {
+                    currentVolume += (getItemData(itemId)?.volume || 0);
+                }
+    
+                const availableSpace = Math.max(0, capacity - currentVolume);
+                if (availableSpace <= 0) return p;
+    
+                const maxUnitsThatCanFit = Math.floor(availableSpace / oreVolumePerUnit);
+                const amountToAdd = Math.min(amountToMine, maxUnitsThatCanFit);
+    
+                if (amountToAdd <= 0) {
+                     setShowCargoFullMessage(true);
+                     setTimeout(() => setShowCargoFullMessage(false), 3000);
+                     return p;
+                }
+    
                 const newState = JSON.parse(JSON.stringify(p));
-                newState.shipCargo.materials[oreData.id] = (newState.shipCargo.materials[oreData.id] || 0) + totalMinedAmount;
-                targetObject.userData.oreQuantity -= totalMinedAmount;
-
+                newState.shipCargo.materials[oreData.id] = (newState.shipCargo.materials[oreData.id] || 0) + amountToAdd;
+                targetObject.userData.oreQuantity -= amountToAdd;
+    
+                const newVolume = currentVolume + (amountToAdd * oreVolumePerUnit);
+                if (newVolume >= capacity) {
+                    setShowCargoFullMessage(true);
+                    setTimeout(() => setShowCargoFullMessage(false), 3000);
+                }
+    
                 setTargetData(t => (t.selectedTarget && t.selectedTarget.uuid === targetObject.uuid) ? { ...t, selectedTarget: { ...t.selectedTarget, oreQuantity: targetObject.userData.oreQuantity } } : t);
-
+    
                 if (targetObject.userData.oreQuantity <= 0) {
                     targetObject.visible = false;
                      threeRef.current.scene.remove(targetObject);
                      gameDataRef.current.asteroids = gameDataRef.current.asteroids.filter(a => a.uuid !== targetObject.uuid);
                      gameDataRef.current.navObjects = gameDataRef.current.navObjects.filter(n => n.object3D.uuid !== targetObject.uuid);
-                     setTargetData(t => ({...t, selectedTarget: null}));
+                     handleDeselectTarget();
                 }
                 return newState;
             });
             setMiningState(null);
         }, cycleTime);
-
-    }, [playerState.currentShipFitting.high, targetData.selectedTarget, miningState]);
+    
+    }, [playerState.currentShipId, playerState.currentShipFitting.high, playerState.shipCargo, targetData.selectedTarget, miningState, handleDeselectTarget]);
 
     const switchToGalaxyMap = () => {
          if (gameState === GameState.TRANSITIONING) return;
@@ -668,11 +758,12 @@ export default function App() {
             mousePosRef.current.y = -(event.clientY / window.innerHeight) * 2 + 1;
             setTooltipData(d => ({ ...d, x: event.clientX, y: event.clientY }));
             if(gameData.isMouseLooking && three.player && !isWarping() && !gameData.lookAtTarget) {
+                // FIX: Define deltaX and deltaY based on mouse movement.
+                const deltaX = event.clientX - prevMousePosRef.current.x;
+                const deltaY = event.clientY - prevMousePosRef.current.y;
                 const currentShipId = (mount.parentElement as HTMLElement)?.dataset.shipid;
                 const ship = SHIP_DATA[currentShipId];
                 if(!ship) return;
-                const deltaX = event.clientX - prevMousePosRef.current.x;
-                const deltaY = event.clientY - prevMousePosRef.current.y;
                 const agilityFactor = 1 / (ship.attributes.agility * 2);
                 three.player.rotateY(-deltaX * agilityFactor * 0.05);
                 three.player.rotateX(-deltaY * agilityFactor * 0.05);
@@ -812,7 +903,6 @@ export default function App() {
 
                     {gameState === GameState.SOLAR_SYSTEM && !isModalOpen && (
                          <div className="absolute top-28 left-2.5 z-5 flex flex-col gap-4">
-                            <ShipCargoUI cargo={playerState.shipCargo} />
                             <ShipStatsUI playerState={playerState} />
                             <MissionTrackerUI playerState={playerState} />
                         </div>
@@ -852,6 +942,12 @@ export default function App() {
                             remainingTime={(miningState.cycleTime - (Date.now() - miningState.startTime)) / 1000}
                         />
                     )}
+
+                    {gameState === GameState.SOLAR_SYSTEM && showCargoFullMessage && (
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-4xl text-red-500 font-bold animate-pulse z-50 pointer-events-none">
+                            SHIP CARGO FULL
+                        </div>
+                    )}
                     
                     <HangarModal isOpen={isShipHangarOpen} onClose={() => setShipHangarOpen(false)} playerState={playerState} onActivateShip={handleActivateShip} stationId={stationId} />
                     {stationId && <ItemHangarModal isOpen={isItemHangarOpen} onClose={() => setItemHangarOpen(false)} playerState={playerState} setPlayerState={setPlayerState} stationId={stationId} /> }
@@ -859,14 +955,19 @@ export default function App() {
                     {gameState === GameState.DOCKED && gameDataRef.current.dockedStation && (
                         <StationInterface 
                             stationName={gameDataRef.current.dockedStation.userData.name}
-                            onUndock={() => fadeTransition(() => setGameState(GameState.SOLAR_SYSTEM))}
-                            onOpenCrafting={() => setCraftingOpen(true)}
-                            onOpenShipHangar={() => setShipHangarOpen(true)}
-                            onOpenItemHangar={() => setItemHangarOpen(true)}
-                            onOpenFitting={() => setFittingOpen(true)}
-                            onOpenReprocessing={() => setReprocessingOpen(true)}
-                            onOpenMarket={() => setMarketOpen(true)}
-                            onOpenAgent={() => setAgentInterfaceOpen(true)}
+                            onUndock={() => {
+                                setShowStationHelp(false);
+                                fadeTransition(() => setGameState(GameState.SOLAR_SYSTEM));
+                            }}
+                            onOpenCrafting={() => { setCraftingOpen(true); setShowStationHelp(false); }}
+                            onOpenShipHangar={() => { setShipHangarOpen(true); setShowStationHelp(false); }}
+                            onOpenItemHangar={() => { setItemHangarOpen(true); setShowStationHelp(false); }}
+                            onOpenFitting={() => { setFittingOpen(true); setShowStationHelp(false); }}
+                            onOpenReprocessing={() => { setReprocessingOpen(true); setShowStationHelp(false); }}
+                            onOpenMarket={() => { setMarketOpen(true); setShowStationHelp(false); }}
+                            onOpenAgent={() => { setAgentInterfaceOpen(true); setShowStationHelp(false); }}
+                            showHelp={showStationHelp}
+                            onToggleHelp={() => setShowStationHelp(prev => !prev)}
                         />
                     )}
 
