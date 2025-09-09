@@ -6,6 +6,13 @@
 
 **[Live Demo](https://peterbabulik.github.io/GalExpl3D/)**
 
+
+# GalExpl3D - A Gemini-Powered 3D Space Economy Simulation
+
+Welcome to GalExpl3D, an immersive browser-based space exploration, trading, and crafting game built with **Three.js** and powered by **Google's Gemini AI** for dynamic content generation.
+
+Inspired by the complex player-driven economies of games like EVE Online, this project demonstrates the power of modern web technologies to create a sophisticated simulation—all within a single HTML file. Pilot your ship in first-person, mine asteroids for valuable ore, refine those materials, and use them to manufacture everything from new ship modules to powerful battleships. Engage with AI-driven mission agents to earn your fortune and make your mark on the galaxy.
+
 ## Run Locally
 
 Follow these steps to set up and run a local instance of the GalExpl3D project.
@@ -45,11 +52,6 @@ npm run dev
 The application will now be running and accessible at [http://localhost:5173/](http://localhost:5173/) (or the next available port).```
 
 
-# GalExpl3D - A Gemini-Powered 3D Space Economy Simulation
-
-Welcome to GalExpl3D, an immersive browser-based space exploration, trading, and crafting game built with **Three.js** and powered by **Google's Gemini AI** for dynamic content generation.
-
-Inspired by the complex player-driven economies of games like EVE Online, this project demonstrates the power of modern web technologies to create a sophisticated simulation—all within a single HTML file. Pilot your ship in first-person, mine asteroids for valuable ore, refine those materials, and use them to manufacture everything from new ship modules to powerful battleships. Engage with AI-driven mission agents to earn your fortune and make your mark on the galaxy.
 
 ## Gameplay & Core Features
 
