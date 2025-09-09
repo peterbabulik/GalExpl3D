@@ -39,10 +39,13 @@ npm install vite @google/genai
 To enable the AI-powered mission generation, you need to provide your own Google Gemini API key.
 
 1.  Create a new file in the root of the project named `.env`.
-2.  ```
+    ```sh
+    cd GalExpl3D
+    ```
+    ```
     nano .env
     ```
-3.  add the following line, replacing `YOUR_API_KEY_HERE` with your actual key:
+2.  add the following line, replacing `YOUR_API_KEY_HERE` with your actual key:
     ```
     GEMINI_API_KEY=YOUR_API_KEY_HERE
     ```
