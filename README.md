@@ -13,7 +13,7 @@ Welcome to GalExpl3D, an immersive browser-based space exploration, trading, and
 
 Inspired by the complex player-driven economies of games like EVE Online, this project demonstrates the power of modern web technologies to create a sophisticated simulation—all within a single HTML file. Pilot your ship in first-person, mine asteroids for valuable ore, refine those materials, and use them to manufacture everything from new ship modules to powerful battleships. Engage with AI-driven mission agents to earn your fortune and make your mark on the galaxy.
 
-## Run Locally
+## Run Locally OR / **[Live Demo](https://peterbabulik.github.io/GalExpl3D/)**
 
 Follow these steps to set up and run a local instance of the GalExpl3D project.
 
