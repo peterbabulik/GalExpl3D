@@ -38,10 +38,12 @@ export const GALAXY_DATA: GalaxyData = {
         { id: 24, name: 'Outer Ring', security: 0.3, x: -50, y: -200 },
         { id: 25, name: 'The Citadel', security: 0.3, x: 200, y: 50 },
         { id: 26, name: 'Lonetrek', security: 0.6, x: 120, y: 90 },
+        { id: 27, name: 'Test', security: 0.4, x: 10, y: -50 },
     ],
     jumps: [
         { from: 1, to: 2 },
         { from: 1, to: 3 },
+        { from: 1, to: 27 },
         { from: 2, to: 3 },
         { from: 2, to: 5 },
         { from: 3, to: 4 },
@@ -213,6 +215,13 @@ export const SOLAR_SYSTEM_DATA: Record<number, SolarSystemData> = {
         ],
         station: { name: 'X-7OMU - Intaki Syndicate Station', orbitsPlanetIndex: 0, orbitDistance: 450 },
         asteroidBeltType: 'rich',
+    },
+    27: {
+        name: 'Test',
+        star: { color: 0xFF4500, diameter: 800000 },
+        planets: [],
+        asteroidBeltType: 'dense',
+        piratePresence: 'low',
     },
 };
 

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
 import { GameState } from './types';
-import type { PlayerState, TooltipData, Target, TargetData, DockingData, NavObject, NavPanelItem, StorageLocation, Module, Ore, AgentData, MissionData } from './types';
+import type { PlayerState, TooltipData, Target, TargetData, DockingData, NavObject, NavPanelItem, StorageLocation, Module, Ore, AgentData, MissionData, SolarSystemData } from './types';
 import { 
     GALAXY_DATA,
     SOLAR_SYSTEM_DATA,
@@ -31,7 +31,8 @@ import {
     SystemInfoUI,
     AgentInterface,
     MissionTrackerUI,
-    VirtualJoystick
+    VirtualJoystick,
+    ModuleBarUI
 } from './UI';
 import { ASTEROID_BELT_TYPES } from './ores';
 import { createAsteroidBelt } from './asteroids';
@@ -132,7 +133,9 @@ export default function App() {
     const [showStationHelp, setShowStationHelp] = useState(false);
     const [showCargoFullMessage, setShowCargoFullMessage] = useState(false);
     const [joystickVector, setJoystickVector] = useState({ x: 0, y: 0 });
-    
+    const [activeModuleSlots, setActiveModuleSlots] = useState<string[]>([]);
+    const [deactivatedWeaponSlots, setDeactivatedWeaponSlots] = useState<string[]>([]);
+
     // Persistence State
     const [isLoading, setIsLoading] = useState(true);
     const [showNamePrompt, setShowNamePrompt] = useState(false);
@@ -150,13 +153,14 @@ export default function App() {
         planets: { mesh: THREE.Mesh, pivot: THREE.Object3D, distance: number }[],
         asteroids: THREE.Mesh[],
         stations: THREE.Object3D[],
+        pirates: THREE.Object3D[],
         navObjects: NavObject[],
         targetedObject: THREE.Object3D | null, // hover target
         lookAtTarget: THREE.Object3D | null,
         dockedStation: THREE.Object3D | null,
         isMouseLooking: boolean,
     }>({
-        planets: [], asteroids: [], stations: [], navObjects: [],
+        planets: [], asteroids: [], stations: [], pirates: [], navObjects: [],
         targetedObject: null, lookAtTarget: null, dockedStation: null,
         isMouseLooking: false
     });
@@ -456,6 +460,8 @@ export default function App() {
                 type: navObj.type,
                 distance: distance,
                 oreQuantity: navObj.object3D.userData.oreQuantity,
+                shipName: navObj.object3D.userData.shipName,
+                hp: navObj.object3D.userData.hp,
             }}));
         }
     }, []);
@@ -501,7 +507,6 @@ export default function App() {
 
         const minerModuleIds = playerState.currentShipFitting.high.filter((id): id is string => !!id && id.includes('miner'));
         if (minerModuleIds.length === 0) {
-// FIX: Corrected alert logic to notify the user if they attempt to mine without a laser. This alert will now correctly trigger for both single-cycle and auto-mining initiation.
             alert("No mining laser fitted!");
             return false;
         }
@@ -638,6 +643,159 @@ export default function App() {
         }
     }, [isAutoMining, miningState, startMiningCycle]);
 
+    const handleAttackTarget = useCallback(() => {
+        const { selectedTarget } = targetData;
+        if (!selectedTarget || selectedTarget.type !== 'pirate' || !selectedTarget.hp) return;
+
+        const fittedWeapons = playerState.currentShipFitting.high
+            .map((id, index) => ({ id, slotKey: `high-${index}` }))
+            .filter(item => {
+                if (!item.id || deactivatedWeaponSlots.includes(item.slotKey)) return false;
+                const moduleData = getItemData(item.id);
+                return !!moduleData && ['projectile', 'hybrid', 'energy', 'missile'].includes(moduleData.subcategory);
+            })
+            .map(item => getItemData(item.id) as Module);
+        
+        if (fittedWeapons.length === 0) {
+            return;
+        }
+
+        let totalDamage = 0;
+
+        fittedWeapons.forEach(weapon => {
+            const range = weapon.attributes.optimalRange || 0;
+            if (selectedTarget.distance <= range) {
+                totalDamage += weapon.attributes.damage || 0;
+            }
+        });
+
+        if (totalDamage === 0) {
+            return;
+        }
+        
+        const newHp = { ...selectedTarget.hp };
+        let remainingDamage = totalDamage;
+
+        // Apply damage to shield, then armor, then hull
+        if (newHp.shield > 0) {
+            const damageToShield = Math.min(newHp.shield, remainingDamage);
+            newHp.shield -= damageToShield;
+            remainingDamage -= damageToShield;
+        }
+        if (remainingDamage > 0 && newHp.armor > 0) {
+            const damageToArmor = Math.min(newHp.armor, remainingDamage);
+            newHp.armor -= damageToArmor;
+            remainingDamage -= damageToArmor;
+        }
+        if (remainingDamage > 0 && newHp.hull > 0) {
+            const damageToHull = Math.min(newHp.hull, remainingDamage);
+            newHp.hull -= damageToHull;
+        }
+
+        // Update target state
+        setTargetData(t => t.selectedTarget ? { ...t, selectedTarget: { ...t.selectedTarget, hp: newHp } } : t);
+        selectedTarget.object3D.userData.hp = newHp;
+
+        // Check for destruction
+        if (newHp.hull <= 0) {
+            console.log(`${selectedTarget.name} destroyed!`);
+            // Despawn logic
+            selectedTarget.object3D.visible = false;
+            threeRef.current.scene.remove(selectedTarget.object3D);
+            gameDataRef.current.pirates = gameDataRef.current.pirates.filter(p => p.uuid !== selectedTarget.uuid);
+            gameDataRef.current.navObjects = gameDataRef.current.navObjects.filter(n => n.object3D.uuid !== selectedTarget.uuid);
+            handleDeselectTarget();
+        }
+
+    }, [targetData.selectedTarget, playerState.currentShipFitting, deactivatedWeaponSlots, handleDeselectTarget]);
+
+    // Autofire Effect
+    useEffect(() => {
+        const fireInterval = setInterval(() => {
+            if (gameState === GameState.SOLAR_SYSTEM && targetData.selectedTarget?.type === 'pirate') {
+                handleAttackTarget();
+            }
+        }, 1500); // Fire every 1.5 seconds
+
+        return () => clearInterval(fireInterval);
+    }, [gameState, targetData.selectedTarget, handleAttackTarget]);
+
+    const handleToggleModule = useCallback((slotKey: string) => {
+        setActiveModuleSlots(prev => 
+            prev.includes(slotKey)
+                ? prev.filter(s => s !== slotKey)
+                : [...prev, slotKey]
+        );
+    }, []);
+    
+    const handleToggleWeapon = useCallback((slotKey: string) => {
+        setDeactivatedWeaponSlots(prev =>
+            prev.includes(slotKey)
+                ? prev.filter(s => s !== slotKey)
+                : [...prev, slotKey]
+        );
+    }, []);
+
+    const handleToggleModuleGroup = useCallback((slotType: 'medium' | 'low') => {
+        const slots = playerStateRef.current.currentShipFitting[slotType];
+        if (!slots || slots.length === 0) return;
+    
+        let firstModuleSlotKey: string | null = null;
+        for (let i = 0; i < slots.length; i++) {
+            if (slots[i]) {
+                firstModuleSlotKey = `${slotType}-${i}`;
+                break;
+            }
+        }
+    
+        if (!firstModuleSlotKey) return;
+    
+        const isGroupCurrentlyActive = activeModuleSlots.includes(firstModuleSlotKey);
+    
+        setActiveModuleSlots(prev => {
+            const newActiveSlots = new Set(prev);
+            
+            for (let i = 0; i < slots.length; i++) {
+                const moduleId = slots[i];
+                if (!moduleId) continue;
+    
+                const module = getItemData(moduleId) as Module;
+                const isToggleable = !['mining_laser', 'projectile', 'hybrid', 'energy', 'missile'].includes(module.subcategory);
+    
+                if (isToggleable) {
+                    const slotKey = `${slotType}-${i}`;
+                    if (isGroupCurrentlyActive) {
+                        newActiveSlots.delete(slotKey);
+                    } else {
+                        newActiveSlots.add(slotKey);
+                    }
+                }
+            }
+            
+            return Array.from(newActiveSlots);
+        });
+    }, [activeModuleSlots]);
+
+
+    const handleSlotClick = useCallback((slotType: 'high' | 'medium' | 'low', slotIndex: number) => {
+        const moduleId = playerStateRef.current.currentShipFitting[slotType][slotIndex];
+        if (!moduleId) return;
+
+        const module = getItemData(moduleId) as Module;
+        if (!module) return;
+
+        const slotKey = `${slotType}-${slotIndex}`;
+        const category = module.subcategory;
+
+        if (['projectile', 'hybrid', 'energy', 'missile'].includes(category)) {
+            handleToggleWeapon(slotKey);
+        } else if (category.includes('miner')) {
+            handleMineSingleCycle();
+        } else {
+            handleToggleModule(slotKey);
+        }
+    }, [handleToggleWeapon, handleMineSingleCycle, handleToggleModule]);
+
     const switchToGalaxyMap = () => {
          if (gameState === GameState.TRANSITIONING) return;
          fadeTransition(() => {
@@ -690,6 +848,7 @@ export default function App() {
             gameData.planets = [];
             gameData.asteroids = [];
             gameData.stations = [];
+            gameData.pirates = [];
             gameData.navObjects = [];
         };
 
@@ -705,6 +864,44 @@ export default function App() {
             return station;
         };
         
+        const spawnPirates = (systemData: SolarSystemData) => {
+            const pirateCount = 5; // Low presence
+            const pirateGeometry = new THREE.ConeGeometry(15, 40, 4); // Pyramid-like
+            const pirateMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000, metalness: 0.5, roughness: 0.6 });
+
+            const lastPlanetDistance = systemData.planets.length > 0 
+                ? systemData.planets[systemData.planets.length - 1]!.distance 
+                : 8000;
+            const innerRadius = lastPlanetDistance + 2000;
+            const outerRadius = innerRadius + 10000;
+
+            for (let i = 0; i < pirateCount; i++) {
+                const pirate = new THREE.Mesh(pirateGeometry, pirateMaterial);
+                
+                const angle = Math.random() * Math.PI * 2;
+                const radius = THREE.MathUtils.randFloat(innerRadius, outerRadius);
+                const x = Math.cos(angle) * radius;
+                const z = Math.sin(angle) * radius;
+                const y = THREE.MathUtils.randFloatSpread(400);
+                pirate.position.set(x, y, z);
+
+                pirate.userData = {
+                    type: 'pirate',
+                    name: 'Guristas Rookie',
+                    shipName: 'Merlin',
+                    hp: {
+                        shield: 400, maxShield: 400,
+                        armor: 200, maxArmor: 200,
+                        hull: 300, maxHull: 300,
+                    }
+                };
+                
+                three.scene.add(pirate);
+                gameData.pirates.push(pirate);
+                gameData.navObjects.push({ name: pirate.userData.name, type: 'pirate', object3D: pirate });
+            }
+        };
+
         const createSolarSystem = (systemId: number) => {
             clearScene();
             const systemData = SOLAR_SYSTEM_DATA[systemId] || { name: (getSystemById(systemId) || {}).name || 'Uncharted System', star: { color: 0xffffff, diameter: 1000000 }, planets: [] };
@@ -770,6 +967,10 @@ export default function App() {
                     gameData.navObjects.push({ name: asteroid.userData.ore.name, type: 'asteroid', object3D: asteroid });
                 }
             });
+
+            if (systemData.piratePresence) {
+                spawnPirates(systemData);
+            }
 
             three.player = new THREE.Object3D();
             if (loadedPositionRef.current && loadedQuaternionRef.current) {
@@ -841,7 +1042,7 @@ export default function App() {
                 }
             }
 
-            const targetableObjects = [...gameData.asteroids, ...gameData.stations];
+            const targetableObjects = [...gameData.asteroids, ...gameData.stations, ...gameData.pirates];
             let closestObject = null;
             let minDistance = 2000;
             const tempVec = new THREE.Vector3();
@@ -874,7 +1075,12 @@ export default function App() {
             const intersects = three.raycaster.intersectObjects(targetableObjects);
             if (intersects.length > 0 && intersects[0].object === gameData.targetedObject) {
                 const data = intersects[0].object.userData;
-                const content = data.type === 'asteroid' ? `<strong>${data.ore.name}</strong><br>Quantity: ${data.oreQuantity}` : `<strong>${data.name}</strong>`;
+                let content = `<strong>${data.name}</strong>`;
+                if (data.type === 'asteroid') {
+                    content += `<br>Quantity: ${data.oreQuantity}`;
+                } else if (data.type === 'pirate') {
+                    content += `<br>Ship: ${data.shipName}`;
+                }
                 setTooltipData(d => ({...d, visible: true, content}));
             } else {
                 setTooltipData(d => d.visible ? ({...d, visible: false}) : d);
@@ -1178,6 +1384,12 @@ export default function App() {
                         onNavClick={switchToGalaxyMap}
                         isDocked={gameState === GameState.DOCKED}
                     />
+                    
+                    {gameState === GameState.SOLAR_SYSTEM && (
+                         <div className="absolute top-2.5 left-1/2 -translate-x-1/2 z-10 text-lg pointer-events-none">
+                            Ship: {currentShip?.name}
+                        </div>
+                    )}
 
                     {gameState === GameState.SOLAR_SYSTEM && !isModalOpen && (
                          <div className="absolute top-28 left-2.5 z-5 flex flex-col gap-4">
@@ -1197,6 +1409,7 @@ export default function App() {
                             onStopMine={handleStopMining}
                             onLookAt={handleLookAtTarget}
                             onDeselect={handleDeselectTarget}
+                            onAttack={handleAttackTarget}
                             setTooltip={setTooltipContent}
                             clearTooltip={clearTooltipContent}
                             isDockable={isDockable}
@@ -1207,19 +1420,26 @@ export default function App() {
                             }}
                         />
                     }
+                    
+                    {gameState === GameState.SOLAR_SYSTEM && !isModalOpen && (
+                         <ModuleBarUI
+                            playerState={playerState}
+                            onSlotClick={handleSlotClick}
+                            activeModuleSlots={activeModuleSlots}
+                            deactivatedWeaponSlots={deactivatedWeaponSlots}
+                            onToggleModuleGroup={handleToggleModuleGroup}
+                            setTooltip={setTooltipContent}
+                            clearTooltip={clearTooltipContent}
+                        />
+                    )}
 
                     {gameState === GameState.SOLAR_SYSTEM && (
-                        <div className="absolute bottom-5 w-full text-center pointer-events-none z-10">
+                        <div className="absolute bottom-28 w-full text-center pointer-events-none z-10">
                             {isWarpingState && <p className="text-2xl text-cyan-400 animate-pulse">WARP DRIVE ACTIVE</p>}
-                            <div className="text-lg mb-1.5">Ship: {currentShip?.name}</div>
-                            {!isTouchDevice && (
-                                <>
-                                    <div className="text-sm">Mouse: Aim | W/S: Fwd/Back | A/D: Strafe | Space/Shift: Up/Down | Q/E: Roll | R/F: Pitch</div>
-                                    <div className="text-sm">+/-: Change Speed Multiplier | Speed: {Math.round(speedMultiplier * 100)}% | </div>
-                                </>
-                            )}
+                            <p className="text-sm">Speed: {Math.round(speedMultiplier * 100)}%</p>
                         </div>
                     )}
+
 
                     {gameState === GameState.SOLAR_SYSTEM && isTouchDevice && !isModalOpen && <VirtualJoystick onMove={setJoystickVector} />}
 

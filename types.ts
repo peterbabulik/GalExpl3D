@@ -26,9 +26,18 @@ export interface Target {
     uuid: string;
     object3D: THREE.Object3D;
     name: string;
-    type: 'star' | 'planet' | 'station' | 'asteroid';
+    type: 'star' | 'planet' | 'station' | 'asteroid' | 'pirate';
     distance: number;
     oreQuantity?: number;
+    shipName?: string;
+    hp?: {
+        shield: number;
+        maxShield: number;
+        armor: number;
+        maxArmor: number;
+        hull: number;
+        maxHull: number;
+    };
 }
 
 export interface TargetData {
@@ -45,7 +54,7 @@ export interface DockingData {
 
 export interface NavObject {
     name: string;
-    type: 'star' | 'planet' | 'station' | 'asteroid';
+    type: 'star' | 'planet' | 'station' | 'asteroid' | 'pirate';
     object3D: THREE.Object3D;
     parent?: THREE.Object3D;
 }
@@ -53,7 +62,7 @@ export interface NavObject {
 export interface NavPanelItem {
     uuid: string;
     name: string;
-    type: 'star' | 'planet' | 'station' | 'asteroid';
+    type: 'star' | 'planet' | 'station' | 'asteroid' | 'pirate';
     distance: number;
     distanceStr: string;
     parentUUID?: string;
@@ -158,6 +167,7 @@ export interface SolarSystemData {
     planets: PlanetData[];
     station?: StationData;
     asteroidBeltType?: string;
+    piratePresence?: 'low' | 'medium' | 'high';
 }
 
 // --- ITEMS ---
