@@ -144,7 +144,7 @@ export default function App() {
     // --- REFS FOR THREE.JS & non-reactive data ---
     const mountRef = useRef<HTMLDivElement>(null);
     const threeRef = useRef<any>({}); // Using any to avoid complex THREE type management
-    const playerStateRef = useRef(playerState); // For autosave interval
+    const playerStateRef = useRef(playerState);
     const undockPositionRef = useRef<THREE.Vector3 | null>(null);
     const gameDataRef = useRef<{
         planets: { mesh: THREE.Mesh, pivot: THREE.Object3D, distance: number }[],
@@ -167,10 +167,19 @@ export default function App() {
     const miningStateRef = useRef(miningState);
     const joystickVecRef = useRef(joystickVector);
     
-    // Update playerStateRef whenever playerState changes for the interval to access
-    useEffect(() => {
-        playerStateRef.current = playerState;
-    }, [playerState]);
+    // Refs for autosave interval
+    const gameStateRef = useRef(gameState);
+    const activeSystemIdRef = useRef(activeSystemId);
+    
+    // Refs for loading saved position
+    const loadedPositionRef = useRef<THREE.Vector3 | null>(null);
+    const loadedQuaternionRef = useRef<THREE.Quaternion | null>(null);
+    const initialDockedStationNameRef = useRef<string | null>(null);
+
+    // Update refs whenever state changes for the interval to access
+    useEffect(() => { playerStateRef.current = playerState; }, [playerState]);
+    useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
+    useEffect(() => { activeSystemIdRef.current = activeSystemId; }, [activeSystemId]);
 
     // --- PERSISTENCE LOGIC ---
     const SAVE_KEY = 'GALEXPL3D_SAVEGAME';
@@ -181,9 +190,29 @@ export default function App() {
             const savedData = localStorage.getItem(SAVE_KEY);
             if (savedData) {
                 const parsedData = JSON.parse(savedData);
-                // Basic validation
                 if (parsedData.playerState && parsedData.playerState.playerName) {
                     setPlayerState(parsedData.playerState);
+
+                    // Restore location and game state
+                    if (parsedData.gameState) {
+                        setGameState(parsedData.gameState);
+                    }
+                    if (parsedData.activeSystemId) {
+                        setActiveSystemId(parsedData.activeSystemId);
+                        const system = getSystemById(parsedData.activeSystemId);
+                        if (system) {
+                            setActiveSystemName(system.name);
+                        }
+                    }
+                    if (parsedData.shipPosition) {
+                        loadedPositionRef.current = new THREE.Vector3().fromArray(parsedData.shipPosition);
+                    }
+                    if (parsedData.shipQuaternion) {
+                        loadedQuaternionRef.current = new THREE.Quaternion().fromArray(parsedData.shipQuaternion);
+                    }
+                    if (parsedData.dockedStationName) {
+                        initialDockedStationNameRef.current = parsedData.dockedStationName;
+                    }
                 } else {
                     setShowNamePrompt(true);
                 }
@@ -203,9 +232,22 @@ export default function App() {
         const intervalId = setInterval(() => {
             if (playerStateRef.current && playerStateRef.current.playerName) {
                 try {
-                    const saveData = {
+                    const saveData: any = {
                         playerState: playerStateRef.current,
+                        gameState: gameStateRef.current,
+                        activeSystemId: activeSystemIdRef.current,
+                        shipPosition: null,
+                        shipQuaternion: null,
+                        dockedStationName: null,
                     };
+
+                    if (gameStateRef.current === GameState.SOLAR_SYSTEM && threeRef.current.player) {
+                        saveData.shipPosition = threeRef.current.player.position.toArray();
+                        saveData.shipQuaternion = threeRef.current.player.quaternion.toArray();
+                    } else if (gameStateRef.current === GameState.DOCKED && gameDataRef.current.dockedStation) {
+                        saveData.dockedStationName = gameDataRef.current.dockedStation.userData.name;
+                    }
+
                     localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
                 } catch (error) {
                     console.error('Failed to autosave game:', error);
@@ -730,7 +772,12 @@ export default function App() {
             });
 
             three.player = new THREE.Object3D();
-            if (undockPositionRef.current) {
+            if (loadedPositionRef.current && loadedQuaternionRef.current) {
+                three.player.position.copy(loadedPositionRef.current);
+                three.player.quaternion.copy(loadedQuaternionRef.current);
+                loadedPositionRef.current = null; // Consume it
+                loadedQuaternionRef.current = null;
+            } else if (undockPositionRef.current) {
                 three.player.position.copy(undockPositionRef.current);
             } else {
                 three.player.position.set(0, 0, systemData.planets && systemData.planets.length > 0 ? systemData.planets[systemData.planets.length - 1]!.distance + 4000 : 5000);
@@ -739,7 +786,20 @@ export default function App() {
             three.solarSystemCamera.position.set(0, 0, 0);
             three.scene.add(three.player);
         };
-        if(activeSystemId) createSolarSystem(activeSystemId);
+        
+        if(activeSystemId) {
+            createSolarSystem(activeSystemId);
+            
+            if (initialDockedStationNameRef.current) {
+                const stationObject = gameData.stations.find(
+                    s => s.userData.name === initialDockedStationNameRef.current
+                );
+                if (stationObject) {
+                    gameData.dockedStation = stationObject;
+                }
+                initialDockedStationNameRef.current = null; // Consume it
+            }
+        }
 
         // --- UPDATE LOOPS ---
         const toScreenPosition = (obj: THREE.Object3D, camera: THREE.Camera) => {
