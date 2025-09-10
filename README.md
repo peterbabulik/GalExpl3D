@@ -139,3 +139,6 @@ This table details the properties of each ore and the amount of each mineral you
 | 🌙 | Spodumain | 16.0 | 250 | Rare | 0.0 | Moon-mined ore with exceptional Tritanium yields. | **Tritanium:** 39221<br>**Pyerite:** 4972<br>**Mexallon:** 78<br>**Isogen:** 245 |
 
 
+<div align="center">
+<img width="1200" height="475" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/main/WeWantYou.png" />
+</div>
