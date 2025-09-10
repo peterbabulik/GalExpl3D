@@ -410,7 +410,7 @@ export const BlueprintData: Record<string, Blueprint> = {
     
     // ==================== MODULE BLUEPRINTS ====================
     
-    // Weapons
+    // High Slot
     'bp_125mm_autocannon': {
         id: 'bp_125mm_autocannon',
         name: '125mm Gatling AutoCannon I Blueprint',
@@ -433,7 +433,90 @@ export const BlueprintData: Record<string, Blueprint> = {
             'advancedEngineering': 0.85
         }
     },
-    
+    'bp_280mm_artillery': {
+        id: 'bp_280mm_artillery',
+        name: '280mm Howitzer Artillery I Blueprint',
+        category: 'Blueprint',
+        outputItem: 'mod_280mm_artillery_i',
+        outputQuantity: 1,
+        basePrice: 150000,
+        manufacturingTime: 700,
+        materials: {
+            'min_tritanium': 2500,
+            'min_pyerite': 600,
+            'min_mexallon': 150,
+            'min_isogen': 20
+        },
+        skills: { 'industrySkill': 1 },
+        facilityBonus: { 'station': 1.0, 'engineeringComplex': 0.9, 'advancedEngineering': 0.85 }
+    },
+    'bp_125mm_railgun': {
+        id: 'bp_125mm_railgun',
+        name: '125mm Railgun I Blueprint',
+        category: 'Blueprint',
+        outputItem: 'mod_125mm_railgun_i',
+        outputQuantity: 1,
+        basePrice: 120000,
+        manufacturingTime: 650,
+        materials: {
+            'min_tritanium': 2200,
+            'min_pyerite': 550,
+            'min_mexallon': 140,
+            'min_isogen': 25
+        },
+        skills: { 'industrySkill': 1 },
+        facilityBonus: { 'station': 1.0, 'engineeringComplex': 0.9, 'advancedEngineering': 0.85 }
+    },
+    'bp_electron_blaster': {
+        id: 'bp_electron_blaster',
+        name: 'Light Electron Blaster I Blueprint',
+        category: 'Blueprint',
+        outputItem: 'mod_electron_blaster_i',
+        outputQuantity: 1,
+        basePrice: 110000,
+        manufacturingTime: 600,
+        materials: {
+            'min_tritanium': 2100,
+            'min_pyerite': 520,
+            'min_mexallon': 130,
+            'min_isogen': 20
+        },
+        skills: { 'industrySkill': 1 },
+        facilityBonus: { 'station': 1.0, 'engineeringComplex': 0.9, 'advancedEngineering': 0.85 }
+    },
+    'bp_pulse_laser': {
+        id: 'bp_pulse_laser',
+        name: 'Small Focused Pulse Laser I Blueprint',
+        category: 'Blueprint',
+        outputItem: 'mod_pulse_laser_i',
+        outputQuantity: 1,
+        basePrice: 130000,
+        manufacturingTime: 650,
+        materials: {
+            'min_tritanium': 2300,
+            'min_pyerite': 580,
+            'min_mexallon': 150,
+            'min_nocxium': 10
+        },
+        skills: { 'industrySkill': 1 },
+        facilityBonus: { 'station': 1.0, 'engineeringComplex': 0.9, 'advancedEngineering': 0.85 }
+    },
+    'bp_rocket_launcher': {
+        id: 'bp_rocket_launcher',
+        name: 'Rocket Launcher I Blueprint',
+        category: 'Blueprint',
+        outputItem: 'mod_rocket_launcher_i',
+        outputQuantity: 1,
+        basePrice: 90000,
+        manufacturingTime: 550,
+        materials: {
+            'min_tritanium': 1800,
+            'min_pyerite': 450,
+            'min_mexallon': 110
+        },
+        skills: { 'industrySkill': 1 },
+        facilityBonus: { 'station': 1.0, 'engineeringComplex': 0.9, 'advancedEngineering': 0.85 }
+    },
     'bp_light_missile_launcher': {
         id: 'bp_light_missile_launcher',
         name: 'Light Missile Launcher I Blueprint',
@@ -457,8 +540,6 @@ export const BlueprintData: Record<string, Blueprint> = {
             'advancedEngineering': 0.85
         }
     },
-    
-    // Mining Equipment
     'bp_miner_i': {
         id: 'bp_miner_i',
         name: 'Miner I Blueprint',
@@ -481,7 +562,24 @@ export const BlueprintData: Record<string, Blueprint> = {
             'advancedEngineering': 0.85
         }
     },
-    
+    'bp_miner_ii': {
+        id: 'bp_miner_ii',
+        name: 'Miner II Blueprint',
+        category: 'Blueprint',
+        outputItem: 'mod_miner_ii',
+        outputQuantity: 1,
+        basePrice: 1000000,
+        manufacturingTime: 1200,
+        materials: {
+            'min_tritanium': 10000,
+            'min_pyerite': 2500,
+            'min_mexallon': 600,
+            'min_isogen': 120,
+            'min_nocxium': 30
+        },
+        skills: { 'industrySkill': 3 },
+        facilityBonus: { 'station': 1.0, 'engineeringComplex': 0.9, 'advancedEngineering': 0.85 }
+    },
     'bp_strip_miner': {
         id: 'bp_strip_miner',
         name: 'Strip Miner I Blueprint',
@@ -507,7 +605,7 @@ export const BlueprintData: Record<string, Blueprint> = {
         }
     },
     
-    // Shield Modules
+    // Medium Slot
     'bp_shield_extender': {
         id: 'bp_shield_extender',
         name: 'Small Shield Extender I Blueprint',
@@ -531,7 +629,6 @@ export const BlueprintData: Record<string, Blueprint> = {
             'advancedEngineering': 0.85
         }
     },
-    
     'bp_shield_booster': {
         id: 'bp_shield_booster',
         name: 'Small Shield Booster I Blueprint',
@@ -556,8 +653,24 @@ export const BlueprintData: Record<string, Blueprint> = {
             'advancedEngineering': 0.85
         }
     },
-    
-    // Propulsion
+    'bp_invuln_field': {
+        id: 'bp_invuln_field',
+        name: 'Adaptive Invulnerability Field I Blueprint',
+        category: 'Blueprint',
+        outputItem: 'mod_invuln_field_i',
+        outputQuantity: 1,
+        basePrice: 200000,
+        manufacturingTime: 800,
+        materials: {
+            'min_tritanium': 3000,
+            'min_pyerite': 750,
+            'min_mexallon': 200,
+            'min_isogen': 40,
+            'min_nocxium': 10
+        },
+        skills: { 'industrySkill': 1 },
+        facilityBonus: { 'station': 1.0, 'engineeringComplex': 0.9, 'advancedEngineering': 0.85 }
+    },
     'bp_afterburner': {
         id: 'bp_afterburner',
         name: '1MN Afterburner I Blueprint',
@@ -581,7 +694,6 @@ export const BlueprintData: Record<string, Blueprint> = {
             'advancedEngineering': 0.85
         }
     },
-    
     'bp_microwarpdrive': {
         id: 'bp_microwarpdrive',
         name: '1MN Microwarpdrive I Blueprint',
@@ -605,6 +717,266 @@ export const BlueprintData: Record<string, Blueprint> = {
             'engineeringComplex': 0.9,
             'advancedEngineering': 0.85
         }
+    },
+    'bp_warp_scrambler': {
+        id: 'bp_warp_scrambler',
+        name: 'Warp Scrambler I Blueprint',
+        category: 'Blueprint',
+        outputItem: 'mod_warp_scrambler_i',
+        outputQuantity: 1,
+        basePrice: 160000,
+        manufacturingTime: 750,
+        materials: {
+            'min_tritanium': 2500,
+            'min_pyerite': 600,
+            'min_mexallon': 150,
+            'min_isogen': 30,
+            'min_nocxium': 5
+        },
+        skills: { 'industrySkill': 1 },
+        facilityBonus: { 'station': 1.0, 'engineeringComplex': 0.9, 'advancedEngineering': 0.85 }
+    },
+    'bp_stasis_web': {
+        id: 'bp_stasis_web',
+        name: 'Stasis Webifier I Blueprint',
+        category: 'Blueprint',
+        outputItem: 'mod_stasis_web_i',
+        outputQuantity: 1,
+        basePrice: 120000,
+        manufacturingTime: 700,
+        materials: {
+            'min_tritanium': 2200,
+            'min_pyerite': 550,
+            'min_mexallon': 140,
+            'min_isogen': 25
+        },
+        skills: { 'industrySkill': 1 },
+        facilityBonus: { 'station': 1.0, 'engineeringComplex': 0.9, 'advancedEngineering': 0.85 }
+    },
+
+    // Low Slot
+    'bp_200mm_plates': {
+        id: 'bp_200mm_plates',
+        name: '200mm Steel Plates I Blueprint',
+        category: 'Blueprint',
+        outputItem: 'mod_200mm_plates_i',
+        outputQuantity: 1,
+        basePrice: 60000,
+        manufacturingTime: 400,
+        materials: {
+            'min_tritanium': 1500,
+            'min_pyerite': 350,
+            'min_mexallon': 80
+        },
+        skills: { 'industrySkill': 1 },
+        facilityBonus: { 'station': 1.0, 'engineeringComplex': 0.9, 'advancedEngineering': 0.85 }
+    },
+    'bp_armor_repairer': {
+        id: 'bp_armor_repairer',
+        name: 'Small Armor Repairer I Blueprint',
+        category: 'Blueprint',
+        outputItem: 'mod_armor_repairer_i',
+        outputQuantity: 1,
+        basePrice: 90000,
+        manufacturingTime: 500,
+        materials: {
+            'min_tritanium': 1800,
+            'min_pyerite': 450,
+            'min_mexallon': 110,
+            'min_isogen': 10
+        },
+        skills: { 'industrySkill': 1 },
+        facilityBonus: { 'station': 1.0, 'engineeringComplex': 0.9, 'advancedEngineering': 0.85 }
+    },
+    'bp_adaptive_plating': {
+        id: 'bp_adaptive_plating',
+        name: 'Adaptive Nano Plating I Blueprint',
+        category: 'Blueprint',
+        outputItem: 'mod_adaptive_plating_i',
+        outputQuantity: 1,
+        basePrice: 140000,
+        manufacturingTime: 600,
+        materials: {
+            'min_tritanium': 2200,
+            'min_pyerite': 550,
+            'min_mexallon': 140,
+            'min_isogen': 30,
+            'min_nocxium': 5
+        },
+        skills: { 'industrySkill': 1 },
+        facilityBonus: { 'station': 1.0, 'engineeringComplex': 0.9, 'advancedEngineering': 0.85 }
+    },
+    'bp_gyrostabilizer': {
+        id: 'bp_gyrostabilizer',
+        name: 'Gyrostabilizer I Blueprint',
+        category: 'Blueprint',
+        outputItem: 'mod_gyrostabilizer_i',
+        outputQuantity: 1,
+        basePrice: 100000,
+        manufacturingTime: 550,
+        materials: {
+            'min_tritanium': 2000,
+            'min_pyerite': 500,
+            'min_mexallon': 125
+        },
+        skills: { 'industrySkill': 1 },
+        facilityBonus: { 'station': 1.0, 'engineeringComplex': 0.9, 'advancedEngineering': 0.85 }
+    },
+    'bp_magstab': {
+        id: 'bp_magstab',
+        name: 'Magnetic Field Stabilizer I Blueprint',
+        category: 'Blueprint',
+        outputItem: 'mod_magstab_i',
+        outputQuantity: 1,
+        basePrice: 100000,
+        manufacturingTime: 550,
+        materials: {
+            'min_tritanium': 2000,
+            'min_pyerite': 500,
+            'min_mexallon': 125,
+            'min_isogen': 10
+        },
+        skills: { 'industrySkill': 1 },
+        facilityBonus: { 'station': 1.0, 'engineeringComplex': 0.9, 'advancedEngineering': 0.85 }
+    },
+    'bp_heat_sink': {
+        id: 'bp_heat_sink',
+        name: 'Heat Sink I Blueprint',
+        category: 'Blueprint',
+        outputItem: 'mod_heat_sink_i',
+        outputQuantity: 1,
+        basePrice: 100000,
+        manufacturingTime: 550,
+        materials: {
+            'min_tritanium': 2000,
+            'min_pyerite': 500,
+            'min_mexallon': 125,
+            'min_nocxium': 5
+        },
+        skills: { 'industrySkill': 1 },
+        facilityBonus: { 'station': 1.0, 'engineeringComplex': 0.9, 'advancedEngineering': 0.85 }
+    },
+    'bp_bcs': {
+        id: 'bp_bcs',
+        name: 'Ballistic Control System I Blueprint',
+        category: 'Blueprint',
+        outputItem: 'mod_bcs_i',
+        outputQuantity: 1,
+        basePrice: 110000,
+        manufacturingTime: 600,
+        materials: {
+            'min_tritanium': 2100,
+            'min_pyerite': 520,
+            'min_mexallon': 130,
+            'min_isogen': 15
+        },
+        skills: { 'industrySkill': 1 },
+        facilityBonus: { 'station': 1.0, 'engineeringComplex': 0.9, 'advancedEngineering': 0.85 }
+    },
+    'bp_pds': {
+        id: 'bp_pds',
+        name: 'Power Diagnostic System I Blueprint',
+        category: 'Blueprint',
+        outputItem: 'mod_pds_i',
+        outputQuantity: 1,
+        basePrice: 80000,
+        manufacturingTime: 450,
+        materials: {
+            'min_tritanium': 1700,
+            'min_pyerite': 400,
+            'min_mexallon': 100,
+            'min_isogen': 10
+        },
+        skills: { 'industrySkill': 1 },
+        facilityBonus: { 'station': 1.0, 'engineeringComplex': 0.9, 'advancedEngineering': 0.85 }
+    },
+    'bp_cap_relay': {
+        id: 'bp_cap_relay',
+        name: 'Capacitor Power Relay I Blueprint',
+        category: 'Blueprint',
+        outputItem: 'mod_cap_relay_i',
+        outputQuantity: 1,
+        basePrice: 70000,
+        manufacturingTime: 400,
+        materials: {
+            'min_tritanium': 1600,
+            'min_pyerite': 380,
+            'min_mexallon': 90
+        },
+        skills: { 'industrySkill': 1 },
+        facilityBonus: { 'station': 1.0, 'engineeringComplex': 0.9, 'advancedEngineering': 0.85 }
+    },
+    'bp_mlu': {
+        id: 'bp_mlu',
+        name: 'Mining Laser Upgrade I Blueprint',
+        category: 'Blueprint',
+        outputItem: 'mod_mlu_i',
+        outputQuantity: 1,
+        basePrice: 200000,
+        manufacturingTime: 700,
+        materials: {
+            'min_tritanium': 3000,
+            'min_pyerite': 750,
+            'min_mexallon': 200,
+            'min_isogen': 20,
+            'min_nocxium': 5
+        },
+        skills: { 'industrySkill': 1 },
+        facilityBonus: { 'station': 1.0, 'engineeringComplex': 0.9, 'advancedEngineering': 0.85 }
+    },
+
+    // Rig Slot
+    'bp_cdfe_rig': {
+        id: 'bp_cdfe_rig',
+        name: 'Small Core Defense Field Extender I Blueprint',
+        category: 'Blueprint',
+        outputItem: 'mod_cdfe_rig_i',
+        outputQuantity: 1,
+        basePrice: 1000000,
+        manufacturingTime: 1800,
+        materials: {
+            'min_tritanium': 25000,
+            'min_pyerite': 6000,
+            'min_mexallon': 1500,
+            'min_isogen': 300,
+            'min_nocxium': 75
+        },
+        skills: { 'industrySkill': 2 },
+        facilityBonus: { 'station': 1.0, 'engineeringComplex': 0.9, 'advancedEngineering': 0.85 }
+    },
+    'bp_trimark_rig': {
+        id: 'bp_trimark_rig',
+        name: 'Small Trimark Armor Pump I Blueprint',
+        category: 'Blueprint',
+        outputItem: 'mod_trimark_rig_i',
+        outputQuantity: 1,
+        basePrice: 1000000,
+        manufacturingTime: 1800,
+        materials: {
+            'min_tritanium': 28000,
+            'min_pyerite': 7000,
+            'min_mexallon': 1800,
+            'min_isogen': 50
+        },
+        skills: { 'industrySkill': 2 },
+        facilityBonus: { 'station': 1.0, 'engineeringComplex': 0.9, 'advancedEngineering': 0.85 }
+    },
+    'bp_aux_thrusters_rig': {
+        id: 'bp_aux_thrusters_rig',
+        name: 'Small Auxiliary Thrusters I Blueprint',
+        category: 'Blueprint',
+        outputItem: 'mod_aux_thrusters_rig_i',
+        outputQuantity: 1,
+        basePrice: 800000,
+        manufacturingTime: 1600,
+        materials: {
+            'min_tritanium': 22000,
+            'min_pyerite': 5500,
+            'min_mexallon': 1400,
+            'min_isogen': 250
+        },
+        skills: { 'industrySkill': 2 },
+        facilityBonus: { 'station': 1.0, 'engineeringComplex': 0.9, 'advancedEngineering': 0.85 }
     },
     
     // ==================== AMMUNITION BLUEPRINTS ====================

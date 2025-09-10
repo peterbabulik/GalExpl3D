@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
 import { GameState } from './types';
@@ -58,6 +59,49 @@ interface MiningState {
 const getSystemById = (id: number) => GALAXY_DATA.systems.find(s => s.id === id);
 const getStationId = (systemId: number, stationName: string) => `station_${systemId}_${stationName.replace(/ /g, '_')}`;
 
+// --- NEW PLAYER MODAL ---
+const NewPlayerModal: React.FC<{ onStart: (name: string) => void }> = ({ onStart }) => {
+    const [name, setName] = useState('');
+
+    const handleStart = () => {
+        if (name.trim()) {
+            onStart(name.trim());
+        }
+    };
+
+    const handleKeyPress = (event: React.KeyboardEvent) => {
+        if (event.key === 'Enter') {
+            handleStart();
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/80 z-[300] flex items-center justify-center">
+            <div className="bg-gray-900 border-2 border-gray-500 p-8 rounded-lg text-center">
+                <h1 className="text-3xl mb-4">Welcome to GalExpl3D</h1>
+                <p className="text-gray-400 mb-6">Please enter your pilot's name to begin.</p>
+                <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    className="w-full bg-gray-800 border border-gray-600 text-white text-lg p-3 rounded mb-6 text-center"
+                    placeholder="Pilot Name"
+                    autoFocus
+                />
+                <button
+                    onClick={handleStart}
+                    disabled={!name.trim()}
+                    className="w-full py-3 px-4 text-lg bg-indigo-700 border border-indigo-500 text-white font-mono cursor-pointer hover:bg-indigo-600 disabled:bg-gray-600/50 disabled:cursor-not-allowed"
+                >
+                    Begin Your Journey
+                </button>
+            </div>
+        </div>
+    );
+};
+
+
 // --- MAIN APP COMPONENT ---
 
 export default function App() {
@@ -89,6 +133,10 @@ export default function App() {
     const [showCargoFullMessage, setShowCargoFullMessage] = useState(false);
     const [joystickVector, setJoystickVector] = useState({ x: 0, y: 0 });
     
+    // Persistence State
+    const [isLoading, setIsLoading] = useState(true);
+    const [showNamePrompt, setShowNamePrompt] = useState(false);
+
     // Gemini-related state (cached data)
     const [agents, setAgents] = useState<Record<string, AgentData>>({});
     const [stationMissions, setStationMissions] = useState<Record<string, MissionData[]>>({});
@@ -96,6 +144,7 @@ export default function App() {
     // --- REFS FOR THREE.JS & non-reactive data ---
     const mountRef = useRef<HTMLDivElement>(null);
     const threeRef = useRef<any>({}); // Using any to avoid complex THREE type management
+    const playerStateRef = useRef(playerState); // For autosave interval
     const undockPositionRef = useRef<THREE.Vector3 | null>(null);
     const gameDataRef = useRef<{
         planets: { mesh: THREE.Mesh, pivot: THREE.Object3D, distance: number }[],
@@ -117,7 +166,63 @@ export default function App() {
     const miningTimeoutRef = useRef<number | null>(null);
     const miningStateRef = useRef(miningState);
     const joystickVecRef = useRef(joystickVector);
+    
+    // Update playerStateRef whenever playerState changes for the interval to access
+    useEffect(() => {
+        playerStateRef.current = playerState;
+    }, [playerState]);
 
+    // --- PERSISTENCE LOGIC ---
+    const SAVE_KEY = 'GALEXPL3D_SAVEGAME';
+
+    // Load game on initial mount
+    useEffect(() => {
+        try {
+            const savedData = localStorage.getItem(SAVE_KEY);
+            if (savedData) {
+                const parsedData = JSON.parse(savedData);
+                // Basic validation
+                if (parsedData.playerState && parsedData.playerState.playerName) {
+                    setPlayerState(parsedData.playerState);
+                } else {
+                    setShowNamePrompt(true);
+                }
+            } else {
+                setShowNamePrompt(true);
+            }
+        } catch (error) {
+            console.error("Failed to load game data:", error);
+            setShowNamePrompt(true); // Load failed, start new game
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
+    // Autosave every 30 seconds
+    useEffect(() => {
+        const intervalId = setInterval(() => {
+            if (playerStateRef.current && playerStateRef.current.playerName) {
+                try {
+                    const saveData = {
+                        playerState: playerStateRef.current,
+                    };
+                    localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
+                } catch (error) {
+                    console.error('Failed to autosave game:', error);
+                }
+            }
+        }, 30000); // 30 seconds
+
+        return () => clearInterval(intervalId);
+    }, []);
+
+    const handleStartNewGame = (name: string) => {
+        setPlayerState({
+            ...INITIAL_PLAYER_STATE,
+            playerName: name,
+        });
+        setShowNamePrompt(false);
+    };
 
     // --- STATE-MUTATING HANDLERS ---
      const fadeTransition = useCallback((callback: () => void) => {
@@ -976,6 +1081,18 @@ export default function App() {
     const isSolarSystemView = gameState === GameState.SOLAR_SYSTEM || gameState === GameState.DOCKED;
 
     const isDockable = targetData.selectedTarget?.type === 'station' && targetData.selectedTarget.distance < DOCKING_RANGE;
+
+    if (isLoading) {
+        return (
+            <div className="fixed inset-0 bg-black flex items-center justify-center text-2xl">
+                Loading...
+            </div>
+        );
+    }
+
+    if (showNamePrompt) {
+        return <NewPlayerModal onStart={handleStartNewGame} />;
+    }
 
     return (
         <div 

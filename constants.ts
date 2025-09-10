@@ -217,7 +217,8 @@ export const SOLAR_SYSTEM_DATA: Record<number, SolarSystemData> = {
 };
 
 export const INITIAL_PLAYER_STATE: PlayerState = {
-    isk: 0,
+    playerName: '',
+    isk: 10000000000,
     currentShipId: 'ship_rookie',
     currentShipFitting: {
         high: ['mod_miner_i', null],
