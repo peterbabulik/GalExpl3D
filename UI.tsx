@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
 
-import type { PlayerState, TooltipData, Target, TargetData, DockingData, NavPanelItem, StorageLocation, Module, Ore, Mineral, AnyItem, AgentData, MissionData } from './types';
+import type { PlayerState, TooltipData, Target, TargetData, DockingData, NavPanelItem, StorageLocation, Module, Ore, Mineral, AnyItem, AgentData, MissionData, Drone } from './types';
 import { 
     SHIP_DATA,
     BLUEPRINT_DATA,
@@ -498,56 +498,54 @@ export const FittingInterface: React.FC<{
     playerState: PlayerState;
     setPlayerState: React.Dispatch<React.SetStateAction<PlayerState>>;
     stationId: string;
-}> = ({ isOpen, onClose, playerState, setPlayerState, stationId }) => {
+    onLoadDrone: (droneId: string) => void;
+    onUnloadDrone: (droneId: string, index: number) => void;
+}> = ({ isOpen, onClose, playerState, setPlayerState, stationId, onLoadDrone, onUnloadDrone }) => {
     if (!isOpen) return null;
 
     const currentShip = SHIP_DATA[playerState.currentShipId];
     const stationHangar = playerState.stationHangars[stationId] || { items: [], materials: {} };
+    
     const availableModules = stationHangar.items
         .map(id => getItemData(id))
         .filter((item): item is Module => !!item && item.category === 'Module');
 
-    const handleFitModule = (moduleId: string) => {
+    const availableDrones = stationHangar.items
+        .map(id => getItemData(id))
+        .filter((item): item is Drone => !!item && item.category === 'Drone');
+
+    const handleFitModule = (moduleId: string, instanceIndex: number) => {
         const moduleData = getItemData(moduleId) as Module;
         if (!moduleData) return;
-
         const slotType = moduleData.slot;
         
         setPlayerState(p => {
             const fitting = p.currentShipFitting;
             if(!fitting[slotType]) return p;
             const firstEmptyIndex = fitting[slotType].indexOf(null);
-
             if (firstEmptyIndex === -1) {
                 alert(`No empty ${slotType} slots available.`);
                 return p;
             }
-
             const newState = JSON.parse(JSON.stringify(p));
             const newStationHangar = newState.stationHangars[stationId];
-            
-            const itemIndexInHangar = newStationHangar.items.indexOf(moduleId);
+            const itemIndexInHangar = newStationHangar.items.findIndex((id: string, idx: number) => id === moduleId && idx === instanceIndex);
             if (itemIndexInHangar > -1) {
                 newStationHangar.items.splice(itemIndexInHangar, 1);
             }
-
             newState.currentShipFitting[slotType][firstEmptyIndex] = moduleId;
-
             return newState;
         });
     };
-
+    
     const handleUnfitModule = (slotType: 'high' | 'medium' | 'low' | 'rig', slotIndex: number) => {
          setPlayerState(p => {
             const moduleId = p.currentShipFitting[slotType][slotIndex];
             if (!moduleId) return p;
-
             const newState = JSON.parse(JSON.stringify(p));
             const newStationHangar = newState.stationHangars[stationId];
-
             newState.currentShipFitting[slotType][slotIndex] = null;
             newStationHangar.items.push(moduleId);
-
             return newState;
          });
     };
@@ -555,18 +553,20 @@ export const FittingInterface: React.FC<{
     const SlotGroup: React.FC<{ type: 'high' | 'medium' | 'low'; slots: (string | null)[] }> = ({ type, slots }) => (
         <div>
             <h4 className="text-lg border-b border-gray-700 pb-1 mb-2 capitalize">{type} Slots ({slots.length})</h4>
-            {slots.map((moduleId, index) => (
-                <div key={index} className="flex justify-between items-center p-1.5 bg-black/20 mb-1 rounded">
-                    {moduleId ? (
-                        <>
-                            <span className="text-cyan-300">{getItemData(moduleId)?.name}</span>
-                            <UIButton onClick={() => handleUnfitModule(type, index)} className="!px-2 !py-1">Unfit</UIButton>
-                        </>
-                    ) : (
-                        <span className="text-gray-500">[ Empty Slot ]</span>
-                    )}
-                </div>
-            ))}
+            <div className="space-y-1">
+                {slots.map((moduleId, index) => (
+                    <div key={index} className="flex justify-between items-center p-1.5 bg-black/20 rounded h-10">
+                        {moduleId ? (
+                            <>
+                                <span className="text-cyan-300">{getItemData(moduleId)?.name}</span>
+                                <UIButton onClick={() => handleUnfitModule(type, index)} className="!px-2 !py-1">Unfit</UIButton>
+                            </>
+                        ) : (
+                            <span className="text-gray-500">[ Empty Slot ]</span>
+                        )}
+                    </div>
+                ))}
+            </div>
         </div>
     );
 
@@ -581,19 +581,53 @@ export const FittingInterface: React.FC<{
                     <SlotGroup type="high" slots={playerState.currentShipFitting.high} />
                     <SlotGroup type="medium" slots={playerState.currentShipFitting.medium} />
                     <SlotGroup type="low" slots={playerState.currentShipFitting.low} />
+                     <div>
+                        <h4 className="text-lg border-b border-gray-700 pb-1 mb-2 capitalize">Drone Bay ({playerState.droneBayCargo.length} / {currentShip.attributes.droneBay})</h4>
+                        <div className="space-y-1">
+                            {playerState.droneBayCargo.map((droneId, index) => (
+                                <div key={`${droneId}-${index}`} className="flex justify-between items-center p-1.5 bg-black/20 rounded h-10">
+                                    <span className="text-yellow-300">{getItemData(droneId)?.name}</span>
+                                    <UIButton onClick={() => onUnloadDrone(droneId, index)} className="!px-2 !py-1">Unload</UIButton>
+                                </div>
+                            ))}
+                            {playerState.droneBayCargo.length === 0 && <div className="p-1.5 bg-black/20 rounded h-10 flex items-center"><span className="text-gray-500">[ Empty Drone Bay ]</span></div>}
+                        </div>
+                    </div>
                 </div>
             </div>
             <div className="bg-gray-800 border border-gray-600 p-4 flex-1 flex flex-col">
-                <h3 className="text-center text-xl mt-0 mb-4">Modules in Hangar</h3>
-                <ul className="list-none p-0 m-0 overflow-y-auto">
-                    {availableModules.length === 0 && <p className="text-gray-500 text-sm pl-2">No modules available.</p>}
-                    {availableModules.map(module => (
-                        <li key={module.id} className="flex justify-between items-center p-1.5 hover:bg-gray-700">
-                            <span>{module.name} <span className="text-xs text-gray-400">({module.size})</span></span>
-                            <UIButton onClick={() => handleFitModule(module.id)} className="!px-2 !py-1">Fit</UIButton>
-                        </li>
-                    ))}
-                </ul>
+                <h3 className="text-center text-xl mt-0 mb-4">Items in Hangar</h3>
+                <div className="overflow-y-auto">
+                    <h4 className="text-lg border-b border-gray-700 pb-1 mb-2">Modules</h4>
+                    <ul className="list-none p-0 m-0 mb-4">
+                        {availableModules.length === 0 && <p className="text-gray-500 text-sm pl-2">No modules.</p>}
+                        {stationHangar.items.map((itemId, index) => {
+                            const itemData = getItemData(itemId);
+                            if (itemData?.category !== 'Module') return null;
+                            return (
+                                <li key={`${itemId}-${index}`} className="flex justify-between items-center p-1.5 hover:bg-gray-700">
+                                    <span>{itemData.name} <span className="text-xs text-gray-400">({itemData.slot})</span></span>
+                                    <UIButton onClick={() => handleFitModule(itemId, index)} className="!px-2 !py-1">Fit</UIButton>
+                                </li>
+                            );
+                        })}
+                    </ul>
+
+                    <h4 className="text-lg border-b border-gray-700 pb-1 mb-2">Drones</h4>
+                    <ul className="list-none p-0 m-0">
+                        {availableDrones.length === 0 && <p className="text-gray-500 text-sm pl-2">No drones.</p>}
+                        {stationHangar.items.map((itemId, index) => {
+                            const itemData = getItemData(itemId);
+                            if (itemData?.category !== 'Drone') return null;
+                            return (
+                                <li key={`${itemId}-${index}`} className="flex justify-between items-center p-1.5 hover:bg-gray-700">
+                                    <span>{itemData.name}</span>
+                                    <UIButton onClick={() => onLoadDrone(itemId)} className="!px-2 !py-1">Load</UIButton>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                </div>
             </div>
         </div>
     );
@@ -1345,7 +1379,17 @@ export const ModuleBarUI: React.FC<{
     onToggleModuleGroup: (slotType: 'medium' | 'low') => void;
     setTooltip: (content: string, event: React.MouseEvent) => void;
     clearTooltip: () => void;
-}> = ({ playerState, onSlotClick, activeModuleSlots, deactivatedWeaponSlots, onToggleModuleGroup, setTooltip, clearTooltip }) => {
+    hasDroneBay: boolean;
+    droneStatus: 'docked' | 'idle' | 'attacking' | 'returning' | 'mining';
+    activeDrones: number;
+    totalDrones: number;
+    onToggleDrones: () => void;
+    onDroneAttack: () => void;
+    isAttackButtonDisabled: boolean;
+    onDroneMine: () => void;
+    isMineButtonDisabled: boolean;
+    selectedTargetType: 'pirate' | 'asteroid' | 'station' | 'planet' | 'star' | null;
+}> = ({ playerState, onSlotClick, activeModuleSlots, deactivatedWeaponSlots, onToggleModuleGroup, setTooltip, clearTooltip, hasDroneBay, droneStatus, activeDrones, totalDrones, onToggleDrones, onDroneAttack, isAttackButtonDisabled, onDroneMine, isMineButtonDisabled, selectedTargetType }) => {
     const { high, medium, low } = playerState.currentShipFitting;
 
     const getModuleIcon = (module: Module | undefined): string => {
@@ -1398,9 +1442,45 @@ export const ModuleBarUI: React.FC<{
             Group
         </button>
     );
+    
+    const droneButtonText = droneStatus === 'docked' ? 'Launch Drones' : 'Return Drones';
+    const isDroneButtonDisabled = (droneStatus === 'docked' && totalDrones === 0) || droneStatus === 'returning';
+
+    const engageButton = () => {
+        if (selectedTargetType === 'pirate') {
+            return (
+                 <UIButton onClick={onDroneAttack} disabled={isAttackButtonDisabled} className="!text-xs !py-1 w-24">
+                    Attack Target
+                </UIButton>
+            );
+        }
+        if (selectedTargetType === 'asteroid') {
+            return (
+                 <UIButton onClick={onDroneMine} disabled={isMineButtonDisabled} className="!text-xs !py-1 w-24">
+                    Mine Target
+                </UIButton>
+            );
+        }
+        // Render a disabled placeholder if target is not engageable
+        return (
+            <UIButton disabled={true} className="!text-xs !py-1 w-24">
+                Engage Target
+            </UIButton>
+        );
+    };
 
     return (
         <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 z-50 pointer-events-auto">
+             {hasDroneBay && (
+                <div className="flex items-center gap-2 bg-gray-800/80 border border-gray-600 rounded-md p-1 px-2">
+                    <span className="font-bold text-lg text-yellow-300" title="Drones">D</span>
+                    <span className="text-sm w-12 text-center">{activeDrones} / {totalDrones}</span>
+                    <UIButton onClick={onToggleDrones} disabled={isDroneButtonDisabled} className="!text-xs !py-1 w-24">
+                        {droneButtonText}
+                    </UIButton>
+                    {engageButton()}
+                </div>
+            )}
             <div className="flex justify-center items-center gap-1.5">
                 {low.map((mod, i) => renderSlot(mod, 'low', i))}
                 {low.length > 0 && <GroupButton slotType="low" />}

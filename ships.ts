@@ -34,7 +34,7 @@ export const ShipData: Record<string, Ship> = {
             warpSpeed: 5.0,
             cargoCapacity: 100,
             droneBandwidth: 0,
-            droneBay: 0
+            droneBay: 5
         },
         slots: {
             high: 2,

@@ -755,6 +755,23 @@ export const BlueprintData: Record<string, Blueprint> = {
     },
 
     // Low Slot
+    'bp_drone_bay_s': {
+        id: 'bp_drone_bay_s',
+        name: 'Small Drone Launching Bay Blueprint',
+        category: 'Blueprint',
+        outputItem: 'mod_drone_bay_s',
+        outputQuantity: 1,
+        basePrice: 500000,
+        manufacturingTime: 900,
+        materials: {
+            'min_tritanium': 8000,
+            'min_pyerite': 2000,
+            'min_mexallon': 500,
+            'min_isogen': 100,
+        },
+        skills: { 'industrySkill': 2 },
+        facilityBonus: { 'station': 1.0 }
+    },
     'bp_200mm_plates': {
         id: 'bp_200mm_plates',
         name: '200mm Steel Plates I Blueprint',
@@ -1046,7 +1063,43 @@ export const BlueprintData: Record<string, Blueprint> = {
             'ammunitionAssembly': 0.8
         }
     },
-    
+    // ==================== DRONE BLUEPRINTS ====================
+    'bp_drone_combat_s_i': {
+        id: 'bp_drone_combat_s_i',
+        name: 'Small Combat Drone I Blueprint',
+        category: 'Blueprint',
+        outputItem: 'drone_combat_s_i',
+        outputQuantity: 5,
+        basePrice: 150000,
+        manufacturingTime: 1200,
+        materials: {
+            'min_tritanium': 10000,
+            'min_pyerite': 2500,
+            'min_mexallon': 600,
+            'min_isogen': 120,
+            'min_nocxium': 30
+        },
+        skills: { 'industrySkill': 2 },
+        facilityBonus: { 'station': 1.0 }
+    },
+    'bp_drone_mining_s_i': {
+        id: 'bp_drone_mining_s_i',
+        name: 'Mining Drone I Blueprint',
+        category: 'Blueprint',
+        outputItem: 'drone_mining_s_i',
+        outputQuantity: 5,
+        basePrice: 200000,
+        manufacturingTime: 1500,
+        materials: {
+            'min_tritanium': 12000,
+            'min_pyerite': 3000,
+            'min_mexallon': 500,
+            'min_isogen': 150,
+            'min_nocxium': 25,
+        },
+        skills: { 'industrySkill': 2 },
+        facilityBonus: { 'station': 1.0 }
+    },
     // ==================== STRUCTURE BLUEPRINTS ====================
     
     'bp_small_station': {

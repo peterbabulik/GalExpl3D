@@ -24,3 +24,4 @@ dist-ssr
 *.sw?
 gitHelp.txt
 .env
+PlayerState.json

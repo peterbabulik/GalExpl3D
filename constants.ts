@@ -223,6 +223,16 @@ export const SOLAR_SYSTEM_DATA: Record<number, SolarSystemData> = {
         asteroidBeltType: 'dense',
         piratePresence: 'low',
     },
+    // Easter Egg System
+    999: {
+        name: 'bzzc',
+        star: { color: 0x00ff00, diameter: 500000 },
+        planets: [
+            { name: 'Pe3k Prime', type: 'terran', diameter: 15000, distance: 10000, color: 0x663399 },
+        ],
+        station: { name: "Pe3k's Rest", orbitsPlanetIndex: 0, orbitDistance: 500 },
+        asteroidBeltType: 'sparse',
+    },
 };
 
 export const INITIAL_PLAYER_STATE: PlayerState = {
@@ -239,6 +249,7 @@ export const INITIAL_PLAYER_STATE: PlayerState = {
         items: [],
         materials: {},
     },
+    droneBayCargo: [],
     assetHangar: {
         items: [],
         materials: {}
@@ -251,7 +262,10 @@ export const INITIAL_PLAYER_STATE: PlayerState = {
                 'bp_miner_i', 
                 'bp_shield_extender', 
                 'bp_microwarpdrive',
-                'bp_fusion_s'
+                'bp_fusion_s',
+                'bp_drone_bay_s',
+                'bp_drone_combat_s_i',
+                'bp_drone_mining_s_i',
             ],
             materials: {}
         }

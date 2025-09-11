@@ -1,9 +1,8 @@
 
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
 import { GameState } from './types';
-import type { PlayerState, TooltipData, Target, TargetData, DockingData, NavObject, NavPanelItem, StorageLocation, Module, Ore, AgentData, MissionData, SolarSystemData } from './types';
+import type { PlayerState, TooltipData, Target, TargetData, DockingData, NavObject, NavPanelItem, StorageLocation, Module, Ore, AgentData, MissionData, SolarSystemData, Drone } from './types';
 import { 
     GALAXY_DATA,
     SOLAR_SYSTEM_DATA,
@@ -54,6 +53,8 @@ interface MiningState {
     startTime: number;
     cycleTime: number;
 }
+
+type DroneStatus = 'docked' | 'idle' | 'attacking' | 'returning' | 'mining';
 
 
 // --- UTILITY FUNCTIONS ---
@@ -135,6 +136,7 @@ export default function App() {
     const [joystickVector, setJoystickVector] = useState({ x: 0, y: 0 });
     const [activeModuleSlots, setActiveModuleSlots] = useState<string[]>([]);
     const [deactivatedWeaponSlots, setDeactivatedWeaponSlots] = useState<string[]>([]);
+    const [droneStatus, setDroneStatus] = useState<DroneStatus>('docked');
 
     // Persistence State
     const [isLoading, setIsLoading] = useState(true);
@@ -148,19 +150,21 @@ export default function App() {
     const mountRef = useRef<HTMLDivElement>(null);
     const threeRef = useRef<any>({}); // Using any to avoid complex THREE type management
     const playerStateRef = useRef(playerState);
+    const targetDataRef = useRef(targetData);
     const undockPositionRef = useRef<THREE.Vector3 | null>(null);
     const gameDataRef = useRef<{
         planets: { mesh: THREE.Mesh, pivot: THREE.Object3D, distance: number }[],
         asteroids: THREE.Mesh[],
         stations: THREE.Object3D[],
         pirates: THREE.Object3D[],
+        drones: { object3D: THREE.Mesh, orbitAngle: number, orbitRadius: number, id: string }[],
         navObjects: NavObject[],
         targetedObject: THREE.Object3D | null, // hover target
         lookAtTarget: THREE.Object3D | null,
         dockedStation: THREE.Object3D | null,
         isMouseLooking: boolean,
     }>({
-        planets: [], asteroids: [], stations: [], pirates: [], navObjects: [],
+        planets: [], asteroids: [], stations: [], pirates: [], drones: [], navObjects: [],
         targetedObject: null, lookAtTarget: null, dockedStation: null,
         isMouseLooking: false
     });
@@ -170,6 +174,8 @@ export default function App() {
     const miningTimeoutRef = useRef<number | null>(null);
     const miningStateRef = useRef(miningState);
     const joystickVecRef = useRef(joystickVector);
+    const easterEggKeysRef = useRef(new Set<string>());
+    const droneMiningTimerRef = useRef<number>(0);
     
     // Refs for autosave interval
     const gameStateRef = useRef(gameState);
@@ -181,6 +187,9 @@ export default function App() {
     const initialDockedStationNameRef = useRef<string | null>(null);
 
     // Update refs whenever state changes for the interval to access
+    useEffect(() => {
+        targetDataRef.current = targetData;
+    }, [targetData]);
     useEffect(() => { playerStateRef.current = playerState; }, [playerState]);
     useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
     useEffect(() => { activeSystemIdRef.current = activeSystemId; }, [activeSystemId]);
@@ -195,7 +204,7 @@ export default function App() {
             if (savedData) {
                 const parsedData = JSON.parse(savedData);
                 if (parsedData.playerState && parsedData.playerState.playerName) {
-                    setPlayerState(parsedData.playerState);
+                    setPlayerState(p => ({...p, ...parsedData.playerState}));
 
                     // Restore location and game state
                     if (parsedData.gameState) {
@@ -279,6 +288,13 @@ export default function App() {
         }, 500);
     }, []);
 
+    const despawnDrones = useCallback(() => {
+        gameDataRef.current.drones.forEach(drone => {
+            threeRef.current.scene?.remove(drone.object3D);
+        });
+        gameDataRef.current.drones = [];
+    }, []);
+
     const dockAtStation = useCallback((station: THREE.Object3D) => {
         if (threeRef.current.player) {
             undockPositionRef.current = threeRef.current.player.position.clone();
@@ -286,9 +302,11 @@ export default function App() {
         fadeTransition(() => {
             gameDataRef.current.dockedStation = station;
             setTargetData(t => ({...t, selectedTarget: null})); // Clear target on dock
+            despawnDrones();
+            setDroneStatus('docked'); // Drones are recalled on dock
             setGameState(GameState.DOCKED);
         });
-    }, [fadeTransition]);
+    }, [fadeTransition, despawnDrones]);
     
     const handleActivateShip = (newShipId: string) => {
         const stationId = getStationId(activeSystemId!, gameDataRef.current.dockedStation!.userData.name);
@@ -346,6 +364,11 @@ export default function App() {
                 items: [],
                 materials: {},
             };
+            // Drones return to hangar on ship switch
+            if (p.droneBayCargo.length > 0) {
+                stationHangar.items.push(...p.droneBayCargo);
+                newState.droneBayCargo = [];
+            }
     
             return newState;
         });
@@ -479,8 +502,11 @@ export default function App() {
         if (miningState && miningState.targetId === targetData.selectedTarget?.uuid) {
             handleStopMining();
         }
+        if (droneStatus === 'attacking' || droneStatus === 'mining') {
+            setDroneStatus('idle');
+        }
         setTargetData(t => ({...t, selectedTarget: null}));
-    }, [targetData.selectedTarget, miningState, handleStopMining]);
+    }, [targetData.selectedTarget, miningState, handleStopMining, droneStatus]);
 
     const handleLookAtTarget = useCallback(() => {
         if (!targetData.selectedTarget) return;
@@ -695,19 +721,7 @@ export default function App() {
         // Update target state
         setTargetData(t => t.selectedTarget ? { ...t, selectedTarget: { ...t.selectedTarget, hp: newHp } } : t);
         selectedTarget.object3D.userData.hp = newHp;
-
-        // Check for destruction
-        if (newHp.hull <= 0) {
-            console.log(`${selectedTarget.name} destroyed!`);
-            // Despawn logic
-            selectedTarget.object3D.visible = false;
-            threeRef.current.scene.remove(selectedTarget.object3D);
-            gameDataRef.current.pirates = gameDataRef.current.pirates.filter(p => p.uuid !== selectedTarget.uuid);
-            gameDataRef.current.navObjects = gameDataRef.current.navObjects.filter(n => n.object3D.uuid !== selectedTarget.uuid);
-            handleDeselectTarget();
-        }
-
-    }, [targetData.selectedTarget, playerState.currentShipFitting, deactivatedWeaponSlots, handleDeselectTarget]);
+    }, [targetData.selectedTarget, playerState.currentShipFitting, deactivatedWeaponSlots]);
 
     // Autofire Effect
     useEffect(() => {
@@ -719,6 +733,162 @@ export default function App() {
 
         return () => clearInterval(fireInterval);
     }, [gameState, targetData.selectedTarget, handleAttackTarget]);
+
+    // Effect to handle target destruction from any source
+    useEffect(() => {
+        if (targetData.selectedTarget?.type === 'pirate' && targetData.selectedTarget?.hp && targetData.selectedTarget.hp.hull <= 0) {
+            console.log(`${targetData.selectedTarget.name} destroyed!`);
+            // Despawn logic
+            targetData.selectedTarget.object3D.visible = false;
+            threeRef.current.scene?.remove(targetData.selectedTarget.object3D);
+            gameDataRef.current.pirates = gameDataRef.current.pirates.filter(p => p.uuid !== targetData.selectedTarget?.uuid);
+            gameDataRef.current.navObjects = gameDataRef.current.navObjects.filter(n => n.object3D.uuid !== targetData.selectedTarget?.uuid);
+            handleDeselectTarget();
+        }
+    }, [targetData.selectedTarget, handleDeselectTarget]);
+
+
+     // --- DRONE LOGIC ---
+
+    const spawnDrones = useCallback(() => {
+        if (!threeRef.current.player || playerState.droneBayCargo.length === 0) return;
+        despawnDrones(); // Clear any existing drone objects first
+
+        const droneGeometry = new THREE.ConeGeometry(5, 12, 4);
+        const droneMaterial = new THREE.MeshStandardMaterial({ color: 0xff4444, metalness: 0.6, roughness: 0.5 });
+        const miningDroneMaterial = new THREE.MeshStandardMaterial({ color: 0x44ff44, metalness: 0.6, roughness: 0.5 });
+
+
+        playerState.droneBayCargo.forEach((droneId, index) => {
+            const droneData = getItemData(droneId) as Drone;
+            if (!droneData) return;
+            
+            const material = droneData.attributes.miningYield ? miningDroneMaterial : droneMaterial;
+            const droneMesh = new THREE.Mesh(droneGeometry, material);
+            const playerPos = threeRef.current.player.position;
+            const spawnOffset = new THREE.Vector3(
+                (Math.random() - 0.5) * 50,
+                (Math.random() - 0.5) * 50,
+                (Math.random() - 0.5) * 50
+            );
+            droneMesh.position.copy(playerPos).add(spawnOffset);
+            
+            threeRef.current.scene.add(droneMesh);
+            gameDataRef.current.drones.push({
+                object3D: droneMesh,
+                orbitAngle: (index / playerState.droneBayCargo.length) * Math.PI * 2,
+                orbitRadius: 80 + (index * 10),
+                id: droneId
+            });
+        });
+    }, [playerState.droneBayCargo, despawnDrones]);
+
+    const handleToggleDrones = useCallback(() => {
+        if (droneStatus === 'docked') {
+            if (playerState.droneBayCargo.length > 0) {
+                spawnDrones();
+                setDroneStatus('idle');
+            }
+        } else if (droneStatus === 'idle' || droneStatus === 'attacking' || droneStatus === 'mining') {
+            setDroneStatus('returning');
+        }
+    }, [droneStatus, playerState.droneBayCargo, spawnDrones]);
+
+    const handleDroneAttack = useCallback(() => {
+        if (droneStatus === 'idle' && targetData.selectedTarget?.type === 'pirate') {
+            setDroneStatus('attacking');
+        }
+    }, [droneStatus, targetData.selectedTarget]);
+    
+    const handleDroneMine = useCallback(() => {
+        if (droneStatus === 'idle' && targetData.selectedTarget?.type === 'asteroid') {
+            droneMiningTimerRef.current = Date.now(); // Set the timer when mining starts
+            setDroneStatus('mining');
+        }
+    }, [droneStatus, targetData.selectedTarget]);
+
+    // Drone Damage Loop
+    useEffect(() => {
+        if (droneStatus !== 'attacking') {
+            return;
+        }
+
+        const damageInterval = setInterval(() => {
+            let totalDroneDamage = 0;
+            gameDataRef.current.drones.forEach(drone => {
+                const droneData = getItemData(drone.id) as Drone;
+                if (droneData) {
+                    totalDroneDamage += droneData.attributes.damage || 0;
+                }
+            });
+
+            if (totalDroneDamage > 0) {
+                setTargetData(t => {
+                    if (!t.selectedTarget || t.selectedTarget.type !== 'pirate' || !t.selectedTarget.hp) {
+                        return t;
+                    }
+
+                    const newHp = { ...t.selectedTarget.hp };
+                    let remainingDamage = totalDroneDamage;
+
+                    if (newHp.shield > 0) {
+                        const damageToShield = Math.min(newHp.shield, remainingDamage);
+                        newHp.shield -= damageToShield;
+                        remainingDamage -= damageToShield;
+                    }
+                    if (remainingDamage > 0 && newHp.armor > 0) {
+                        const damageToArmor = Math.min(newHp.armor, remainingDamage);
+                        newHp.armor -= damageToArmor;
+                        remainingDamage -= damageToArmor;
+                    }
+                    if (remainingDamage > 0 && newHp.hull > 0) {
+                        newHp.hull -= remainingDamage;
+                    }
+
+                    t.selectedTarget.object3D.userData.hp = newHp;
+
+                    return { ...t, selectedTarget: { ...t.selectedTarget, hp: newHp } };
+                });
+            }
+        }, 1000); // Apply DPS every second
+
+        return () => clearInterval(damageInterval);
+    }, [droneStatus]);
+    
+
+    const handleLoadDrone = useCallback((droneId: string) => {
+        setPlayerState(p => {
+            const currentShip = SHIP_DATA[p.currentShipId];
+            if (p.droneBayCargo.length >= currentShip.attributes.droneBay) {
+                alert("Drone bay is full.");
+                return p;
+            }
+            
+            const stationId = getStationId(activeSystemId!, gameDataRef.current.dockedStation!.userData.name);
+            const newState = JSON.parse(JSON.stringify(p));
+            const stationHangar = newState.stationHangars[stationId];
+            
+            const itemIndexInHangar = stationHangar.items.indexOf(droneId);
+            if (itemIndexInHangar > -1) {
+                stationHangar.items.splice(itemIndexInHangar, 1);
+                newState.droneBayCargo.push(droneId);
+            }
+            return newState;
+        });
+    }, [activeSystemId]);
+
+    const handleUnloadDrone = useCallback((droneId: string, index: number) => {
+        setPlayerState(p => {
+            const stationId = getStationId(activeSystemId!, gameDataRef.current.dockedStation!.userData.name);
+            const newState = JSON.parse(JSON.stringify(p));
+            const stationHangar = newState.stationHangars[stationId];
+
+            newState.droneBayCargo.splice(index, 1);
+            stationHangar.items.push(droneId);
+
+            return newState;
+        });
+    }, [activeSystemId]);
 
     const handleToggleModule = useCallback((slotKey: string) => {
         setActiveModuleSlots(prev => 
@@ -849,6 +1019,7 @@ export default function App() {
             gameData.asteroids = [];
             gameData.stations = [];
             gameData.pirates = [];
+            gameData.drones = [];
             gameData.navObjects = [];
         };
 
@@ -1023,6 +1194,174 @@ export default function App() {
             });
             setNavPanelData(newData);
         };
+        const updateDrones = (delta: number, currentDroneStatus: DroneStatus) => {
+            if (!three.player || currentDroneStatus === 'docked' || gameData.drones.length === 0) return;
+        
+            const droneSpeed = 150 * delta;
+            let targetPosition: THREE.Vector3 | null = null;
+        
+            if ((currentDroneStatus === 'attacking' || currentDroneStatus === 'mining') && targetDataRef.current.selectedTarget) {
+                targetPosition = targetDataRef.current.selectedTarget.object3D.getWorldPosition(new THREE.Vector3());
+            } else {
+                targetPosition = three.player.position.clone();
+            }
+        
+            if (!targetPosition) {
+                // Failsafe if target disappears but state hasn't updated
+                setDroneStatus('idle');
+                return;
+            }
+        
+            const dronesToKeep: typeof gameData.drones = [];
+        
+            gameData.drones.forEach((drone, index) => {
+                let keep = true;
+                drone.orbitAngle += (0.5 + (index * 0.1)) * delta;
+        
+                let orbitCenter = targetPosition!;
+                let desiredPosition: THREE.Vector3;
+        
+                if (currentDroneStatus === 'returning') {
+                    desiredPosition = three.player.position.clone();
+                    const distanceToPlayer = drone.object3D.position.distanceTo(desiredPosition);
+                    if (distanceToPlayer < 100) {
+                        three.scene.remove(drone.object3D);
+                        keep = false;
+                    }
+                } else {
+                     desiredPosition = new THREE.Vector3(
+                        orbitCenter.x + Math.cos(drone.orbitAngle) * drone.orbitRadius,
+                        orbitCenter.y + Math.sin(drone.orbitAngle * 1.2) * (drone.orbitRadius / 4),
+                        orbitCenter.z + Math.sin(drone.orbitAngle) * drone.orbitRadius
+                    );
+                }
+        
+                if (keep) {
+                    drone.object3D.position.lerp(desiredPosition, droneSpeed * 0.05);
+                    drone.object3D.lookAt(orbitCenter);
+                    dronesToKeep.push(drone);
+                }
+            });
+        
+            gameData.drones = dronesToKeep;
+        
+            if (currentDroneStatus === 'returning' && gameData.drones.length === 0) {
+                setDroneStatus('docked');
+            }
+
+            // --- DRONE MINING LOGIC ---
+            if (currentDroneStatus === 'mining') {
+                const target = targetDataRef.current.selectedTarget;
+                if (!target || target.type !== 'asteroid') {
+                    setDroneStatus('idle');
+                    return;
+                }
+
+                const firstMiningDroneData = gameData.drones
+                    .map(d => getItemData(d.id) as Drone)
+                    .find(d => d?.attributes?.miningYield);
+
+                if (!firstMiningDroneData) { // No mining drones are out
+                    setDroneStatus('idle');
+                    return;
+                }
+
+                const cycleTime = (firstMiningDroneData.attributes.cycleTime || 5) * 1000;
+                const now = Date.now();
+
+                if (now - droneMiningTimerRef.current >= cycleTime) {
+                    droneMiningTimerRef.current = now; // Reset timer for next cycle
+
+                    const currentShipData = SHIP_DATA[playerStateRef.current.currentShipId];
+                    if (!currentShipData) return;
+
+                    const totalCapacity = currentShipData.attributes.cargoCapacity + (currentShipData.attributes.oreHold || 0);
+                    let currentCargoVolume = 0;
+                    for (const matId in playerStateRef.current.shipCargo.materials) {
+                        currentCargoVolume += (getItemData(matId)?.volume || 0) * playerStateRef.current.shipCargo.materials[matId];
+                    }
+                    for (const itemId of playerStateRef.current.shipCargo.items) {
+                        currentCargoVolume += (getItemData(itemId)?.volume || 0);
+                    }
+
+                    if (currentCargoVolume >= totalCapacity) {
+                        setShowCargoFullMessage(true);
+                        setTimeout(() => setShowCargoFullMessage(false), 3000);
+                        setDroneStatus('idle');
+                        return;
+                    }
+
+                    let totalDroneYield = 0;
+                    gameData.drones.forEach(drone => {
+                        const droneData = getItemData(drone.id) as Drone;
+                        if (droneData && droneData.attributes.miningYield) {
+                            totalDroneYield += droneData.attributes.miningYield;
+                        }
+                    });
+
+                    if (totalDroneYield > 0) {
+                        setPlayerState(p => {
+                            if (!targetDataRef.current.selectedTarget) {
+                                setDroneStatus('idle');
+                                return p;
+                            }
+                            const targetObject = gameData.asteroids.find(a => a.uuid === targetDataRef.current.selectedTarget!.uuid);
+                            if (!targetObject || targetObject.userData.oreQuantity <= 0) {
+                                setDroneStatus('idle');
+                                return p;
+                            }
+
+                            const oreData = targetObject.userData.ore as Ore;
+                            const oreVolumePerUnit = oreData.volume || 0.1;
+                            const amountToMine = Math.min(totalDroneYield, targetObject.userData.oreQuantity);
+
+                            if (amountToMine <= 0) {
+                                setDroneStatus('idle');
+                                return p;
+                            }
+
+                            let currentVolume = 0;
+                            for (const matId in p.shipCargo.materials) {
+                                currentVolume += (getItemData(matId)?.volume || 0) * p.shipCargo.materials[matId];
+                            }
+                            for (const itemId of p.shipCargo.items) {
+                                currentVolume += (getItemData(itemId)?.volume || 0);
+                            }
+                            const availableSpace = Math.max(0, totalCapacity - currentVolume);
+                            if (availableSpace <= 0) {
+                                return p;
+                            }
+
+                            const maxUnitsThatCanFit = Math.floor(availableSpace / oreVolumePerUnit);
+                            const amountToAdd = Math.min(amountToMine, maxUnitsThatCanFit);
+
+                            if (amountToAdd <= 0) {
+                                setShowCargoFullMessage(true);
+                                setTimeout(() => setShowCargoFullMessage(false), 3000);
+                                setDroneStatus('idle');
+                                return p;
+                            }
+
+                            const newState = JSON.parse(JSON.stringify(p));
+                            newState.shipCargo.materials[oreData.id] = (newState.shipCargo.materials[oreData.id] || 0) + amountToAdd;
+                            targetObject.userData.oreQuantity -= amountToAdd;
+
+                            setTargetData(t => (t.selectedTarget && t.selectedTarget.uuid === targetObject.uuid) ? { ...t, selectedTarget: { ...t.selectedTarget, oreQuantity: targetObject.userData.oreQuantity } } : t);
+
+                            if (targetObject.userData.oreQuantity <= 0) {
+                                targetObject.visible = false;
+                                threeRef.current.scene.remove(targetObject);
+                                gameData.asteroids = gameData.asteroids.filter(a => a.uuid !== targetObject.uuid);
+                                gameData.navObjects = gameData.navObjects.filter(n => n.object3D.uuid !== targetObject.uuid);
+                                handleDeselectTarget();
+                            }
+                            
+                            return newState;
+                        });
+                    }
+                }
+            }
+        };
         const updateSolarSystem = (delta: number, currentShip: any) => {
              gameData.planets.forEach(p => {
                 p.pivot.rotation.y += (1 / Math.sqrt(p.distance)) * ORBIT_SPEED_CONSTANT * delta;
@@ -1115,9 +1454,13 @@ export default function App() {
         // --- ANIMATION LOOP ---
         let animationFrameId: number;
         let lastNavUpdate = 0;
-        const animate = () => {
+        const animate = (time: number) => {
             animationFrameId = requestAnimationFrame(animate);
             const delta = three.clock.getDelta();
+            
+            // This is a way to get the most recent state inside the animation loop
+            // which is a closure and would otherwise hold stale state.
+            const currentDroneStatus = (mount.parentElement as HTMLElement)?.dataset.dronestatus as DroneStatus;
             
             const currentGameState = (mount.parentElement as HTMLElement)?.dataset.gamestate;
 
@@ -1127,7 +1470,10 @@ export default function App() {
                 const currentShipId = (mount.parentElement as HTMLElement)?.dataset.shipid;
                 if (currentShipId) {
                     const currentShip = SHIP_DATA[currentShipId];
-                    if (currentShip) updateSolarSystem(delta, currentShip);
+                    if (currentShip) {
+                        updateSolarSystem(delta, currentShip);
+                        updateDrones(delta, currentDroneStatus);
+                    }
                 }
 
                 if (miningStateRef.current) {
@@ -1258,7 +1604,7 @@ export default function App() {
         document.addEventListener('touchend', onTouchEnd);
         document.addEventListener('touchcancel', onTouchEnd);
         
-        animate();
+        animate(0);
         
         return () => {
             cancelAnimationFrame(animationFrameId);
@@ -1272,7 +1618,7 @@ export default function App() {
             document.removeEventListener('touchmove', onTouchMove);
             document.removeEventListener('touchend', onTouchEnd);
             document.removeEventListener('touchcancel', onTouchEnd);
-            if (three.renderer) mount.removeChild(three.renderer.domElement);
+            if (mountRef.current && three.renderer) mountRef.current.removeChild(three.renderer.domElement);
             three.renderer?.dispose();
         };
     }, [gameState, activeSystemId]); 
@@ -1307,6 +1653,42 @@ export default function App() {
         window.addEventListener('keydown', handleKeyPress);
         return () => window.removeEventListener('keydown', handleKeyPress);
     }, [gameState]);
+    
+    // Easter egg listener
+    useEffect(() => {
+        const requiredKeys = new Set(['KeyP', 'KeyE', 'Digit3', 'KeyK']);
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (document.activeElement?.tagName === 'INPUT' || gameStateRef.current === GameState.TRANSITIONING) {
+                return;
+            }
+
+            easterEggKeysRef.current.add(event.code);
+            const allKeysPressed = [...requiredKeys].every(key => easterEggKeysRef.current.has(key));
+
+            if (allKeysPressed) {
+                fadeTransition(() => {
+                    undockPositionRef.current = null;
+                    setActiveSystemId(999);
+                    setActiveSystemName('bzzc');
+                    setGameState(GameState.SOLAR_SYSTEM);
+                });
+                easterEggKeysRef.current.clear();
+            }
+        };
+
+        const handleKeyUp = (event: KeyboardEvent) => {
+            easterEggKeysRef.current.delete(event.code);
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('keyup', handleKeyUp);
+
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('keyup', handleKeyUp);
+        };
+    }, [fadeTransition]);
     
     // Effect to update mining progress
     useEffect(() => {
@@ -1346,7 +1728,12 @@ export default function App() {
 
     const isSolarSystemView = gameState === GameState.SOLAR_SYSTEM || gameState === GameState.DOCKED;
 
+    const isAttackButtonDisabled = droneStatus !== 'idle' || !targetData.selectedTarget || targetData.selectedTarget.type !== 'pirate';
+    const isDroneMineButtonDisabled = droneStatus !== 'idle' || !targetData.selectedTarget || targetData.selectedTarget.type !== 'asteroid';
     const isDockable = targetData.selectedTarget?.type === 'station' && targetData.selectedTarget.distance < DOCKING_RANGE;
+
+    const hasDroneBay = playerState.currentShipFitting.low.some(id => id === 'mod_drone_bay_s');
+
 
     if (isLoading) {
         return (
@@ -1369,6 +1756,7 @@ export default function App() {
             data-modalopen={isModalOpen}
             data-mining={!!miningState}
             data-miningtarget={miningState?.targetId || ''}
+            data-dronestatus={droneStatus}
         >
             {gameState === GameState.GALAX_MAP ? (
                 <GalaxyMap onSystemSelect={handleSystemSelect} />
@@ -1430,6 +1818,16 @@ export default function App() {
                             onToggleModuleGroup={handleToggleModuleGroup}
                             setTooltip={setTooltipContent}
                             clearTooltip={clearTooltipContent}
+                            hasDroneBay={hasDroneBay}
+                            droneStatus={droneStatus}
+                            activeDrones={gameDataRef.current.drones.length}
+                            totalDrones={playerState.droneBayCargo.length}
+                            onToggleDrones={handleToggleDrones}
+                            onDroneAttack={handleDroneAttack}
+                            isAttackButtonDisabled={isAttackButtonDisabled}
+                            onDroneMine={handleDroneMine}
+                            isMineButtonDisabled={isDroneMineButtonDisabled}
+                            selectedTargetType={targetData.selectedTarget?.type || null}
                         />
                     )}
 
@@ -1488,7 +1886,15 @@ export default function App() {
                     )}
                     
                     {isFittingOpen && stationId && (
-                        <FittingInterface isOpen={isFittingOpen} onClose={() => setFittingOpen(false)} playerState={playerState} setPlayerState={setPlayerState} stationId={stationId} />
+                        <FittingInterface 
+                            isOpen={isFittingOpen} 
+                            onClose={() => setFittingOpen(false)} 
+                            playerState={playerState} 
+                            setPlayerState={setPlayerState} 
+                            stationId={stationId}
+                            onLoadDrone={handleLoadDrone}
+                            onUnloadDrone={handleUnloadDrone}
+                        />
                     )}
 
                     {isReprocessingOpen && stationId && (

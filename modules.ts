@@ -1,5 +1,5 @@
 // modules.ts
-import type { Module, Ammunition, ItemData } from './types';
+import type { Module, Ammunition, ItemData, Drone } from './types';
 
 export const MODULE_DATA: Record<string, Module> = {
     // ==================== HIGH SLOT MODULES ====================
@@ -461,7 +461,24 @@ export const MODULE_DATA: Record<string, Module> = {
     },
     
     // ==================== LOW SLOT MODULES ====================
-    
+    'mod_drone_bay_s': {
+        id: 'mod_drone_bay_s',
+        name: 'Small Drone Launching Bay',
+        category: 'Module',
+        subcategory: 'drone_bay',
+        slot: 'low',
+        size: 'all',
+        meta: 0,
+        basePrice: 250000,
+        description: 'A bay that allows for the deployment and control of small drones.',
+        attributes: {
+            powerGridUsage: 10,
+            cpuUsage: 25,
+        },
+        requirements: {
+            skills: {}
+        }
+    },
     'mod_200mm_plates_i': {
         id: 'mod_200mm_plates_i',
         name: '200mm Steel Plates I',
@@ -855,8 +872,46 @@ const AMMUNITION_DATA: Record<string, Ammunition> = {
     }
 };
 
+const DRONE_DATA: Record<string, Drone> = {
+    'drone_combat_s_i': {
+        id: 'drone_combat_s_i',
+        name: 'Small Combat Drone I',
+        category: 'Drone',
+        size: 'small',
+        basePrice: 15000,
+        volume: 5,
+        description: 'A basic small combat drone.',
+        attributes: {
+            hp: 50,
+            damage: 5, // DPS
+            speed: 500,
+            orbitDistance: 1000,
+            bandwidthUsage: 5,
+        },
+    },
+    'drone_mining_s_i': {
+        id: 'drone_mining_s_i',
+        name: 'Mining Drone I',
+        category: 'Drone',
+        size: 'small',
+        basePrice: 20000,
+        volume: 5,
+        description: 'A basic small drone equipped with a mining laser.',
+        attributes: {
+            hp: 40,
+            damage: 0,
+            miningYield: 15, // m3 per cycle
+            cycleTime: 5,
+            speed: 400,
+            orbitDistance: 1000,
+            bandwidthUsage: 5,
+        },
+    }
+};
+
 export const OTHER_ITEM_DATA: Record<string, ItemData> = {
     ...AMMUNITION_DATA,
+    ...DRONE_DATA,
     'comp_construction_blocks': { id: 'comp_construction_blocks', name: 'Construction Blocks', category: 'Component' },
     'cons_nanite_paste': { id: 'cons_nanite_paste', name: 'Nanite Repair Paste', category: 'Consumable' },
     'structure_small_station': { id: 'structure_small_station', name: 'Small Station', category: 'Structure' },

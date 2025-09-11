@@ -1,7 +1,7 @@
 <div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/main/Screenshot_20250908_002837.png" />
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/main/Screenshot_20250908_003543.png" />
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/main/WeWantYou2.png" />
+<img width="1200" height="475" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/main/Pictures/Screenshot_20250908_002837.png" />
+<img width="1200" height="475" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/main/Pictures/Screenshot_20250908_003543.png" />
+<img width="1200" height="475" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/main/Pictures/WeWantYou2.png" />
 </div>
 
 
@@ -164,5 +164,5 @@ This table details the properties of each ore and the amount of each mineral you
 
 
 <div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/main/WeWantYou.png" />
+<img width="1200" height="475" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/main/Pictures/WeWantYou.png" />
 </div>

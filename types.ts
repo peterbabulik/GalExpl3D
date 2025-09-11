@@ -11,7 +11,7 @@ export enum GameState {
     TRANSITIONING = 'TRANSITIONING',
 }
 
-export type ItemCategory = 'Ship' | 'Module' | 'Material' | 'Blueprint' | 'Ore' | 'Mineral' | 'Component' | 'Consumable' | 'Ammunition' | 'Structure';
+export type ItemCategory = 'Ship' | 'Module' | 'Material' | 'Blueprint' | 'Ore' | 'Mineral' | 'Component' | 'Consumable' | 'Ammunition' | 'Structure' | 'Drone';
 
 // --- UI & SCENE DATA ---
 
@@ -89,6 +89,7 @@ export interface PlayerState {
     currentShipId: string;
     currentShipFitting: ShipFitting;
     shipCargo: StorageLocation;
+    droneBayCargo: string[];
     assetHangar: StorageLocation;
     stationHangars: Record<string, StorageLocation>;
     activeMissions: MissionData[];
@@ -218,8 +219,22 @@ export interface Ammunition extends BaseItem {
     durability?: number;
 }
 
+export interface Drone extends BaseItem {
+    category: 'Drone';
+    size: 'small' | 'medium' | 'large';
+    attributes: {
+        hp: number;
+        damage?: number; // DPS
+        miningYield?: number; // m3 per cycle
+        cycleTime?: number; // in seconds
+        speed: number;
+        orbitDistance: number;
+        bandwidthUsage: number;
+    };
+}
 
-export type AnyItem = BaseItem | Ore | Mineral | Ship | Blueprint | Module | Ammunition;
+
+export type AnyItem = BaseItem | Ore | Mineral | Ship | Blueprint | Module | Ammunition | Drone;
 
 export interface ItemData extends BaseItem {
     // This is a generic type for lookup, specific types are used in data files
