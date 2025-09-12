@@ -130,7 +130,7 @@ The project is architected as a modern web application, leveraging a powerful an
 
 ### Mission 1 go to Sol. Titan Station, there are some Blueprints. First craft Mining Laser (mine, transfer to station, reprocess, craft) and fit it to your Rookie ship.
 
-**[MANUAL/SHIPS/ORES/BLUEPRINTS](https://github.com/peterbabulik/GalExpl3D/blob/MANUAL.md)**
+**[MANUAL/SHIPS/ORES/BLUEPRINTS](https://github.com/peterbabulik/GalExpl3D/blob/24776a5bffdd09181a2ffa3244e16e749bc27f38/MANUAL.md)**
 
 ### Basic Controls
 *   **In Space:**
