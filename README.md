@@ -84,6 +84,9 @@ npm run dev
 ```
 The application will now be running and accessible at [http://localhost:5173/](http://localhost:5173/) (or the next available port).```
 
+<div align="center">
+<img width="1200" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/main/Pictures/WeWantYou9.gif" />
+</div>
 
 
 ## Gameplay & Core Features
@@ -200,6 +203,5 @@ The current foundation is robust, paving the way for even deeper and more emerge
 
 <div align="center">
 <img width="1200" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/main/Pictures/WeWantYou9.png" />
-<img width="1200" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/main/Pictures/WeWantYou9.gif" />
 <img width="1200" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/main/Pictures/ChimpInZoo.gif" />
 </div>
