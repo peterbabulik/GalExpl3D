@@ -199,5 +199,5 @@ The current foundation is robust, paving the way for even deeper and more emerge
     *   [ ] **(Experimental) Blockchain Integration:** Exploring the potential to move core game assets (ships, rare blueprints) onto a blockchain as NFTs, giving players true ownership of their digital assets.
 
 <div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/main/Pictures/WeWantYou9.gif" />
+<img width="1200" height="475" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/main/Pictures/WeWantYou9.png" />
 </div>
