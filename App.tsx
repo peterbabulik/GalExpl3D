@@ -174,7 +174,6 @@ export default function App() {
     const miningTimeoutRef = useRef<number | null>(null);
     const miningStateRef = useRef(miningState);
     const joystickVecRef = useRef(joystickVector);
-    const easterEggKeysRef = useRef(new Set<string>());
     const droneMiningTimerRef = useRef<number>(0);
     
     // Refs for autosave interval
@@ -1653,42 +1652,6 @@ export default function App() {
         window.addEventListener('keydown', handleKeyPress);
         return () => window.removeEventListener('keydown', handleKeyPress);
     }, [gameState]);
-    
-    // Easter egg listener
-    useEffect(() => {
-        const requiredKeys = new Set(['KeyP', 'KeyE', 'Digit3', 'KeyK']);
-
-        const handleKeyDown = (event: KeyboardEvent) => {
-            if (document.activeElement?.tagName === 'INPUT' || gameStateRef.current === GameState.TRANSITIONING) {
-                return;
-            }
-
-            easterEggKeysRef.current.add(event.code);
-            const allKeysPressed = [...requiredKeys].every(key => easterEggKeysRef.current.has(key));
-
-            if (allKeysPressed) {
-                fadeTransition(() => {
-                    undockPositionRef.current = null;
-                    setActiveSystemId(999);
-                    setActiveSystemName('bzzc');
-                    setGameState(GameState.SOLAR_SYSTEM);
-                });
-                easterEggKeysRef.current.clear();
-            }
-        };
-
-        const handleKeyUp = (event: KeyboardEvent) => {
-            easterEggKeysRef.current.delete(event.code);
-        };
-
-        window.addEventListener('keydown', handleKeyDown);
-        window.addEventListener('keyup', handleKeyUp);
-
-        return () => {
-            window.removeEventListener('keydown', handleKeyDown);
-            window.removeEventListener('keyup', handleKeyUp);
-        };
-    }, [fadeTransition]);
     
     // Effect to update mining progress
     useEffect(() => {
