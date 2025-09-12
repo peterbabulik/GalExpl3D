@@ -1,6 +1,7 @@
 
 
 
+
 import type { Ship, ShipClass, ShipSkill } from './types';
 
 // Ship Data - EVE Online Inspired

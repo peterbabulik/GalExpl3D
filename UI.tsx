@@ -1,4 +1,5 @@
 
+
 // UI.tsx
 
 // FIX: Import 'useCallback' from 'react' to fix 'Cannot find name' errors.
@@ -33,6 +34,47 @@ const hasMaterials = (playerMaterials: Record<string, number>, required: Record<
 
 
 // --- UI HELPER COMPONENTS ---
+
+const ItemIcon: React.FC<{ item: AnyItem | undefined, size?: 'small' | 'normal' }> = ({ item, size = 'normal' }) => {
+    const [imageError, setImageError] = useState(false);
+    const sizeClass = size === 'small' ? 'w-6 h-6' : 'w-8 h-8';
+
+    useEffect(() => {
+        // Reset error state if the item changes
+        setImageError(false);
+    }, [item?.id]);
+
+    if (!item) {
+        return <div className={`${sizeClass} flex-shrink-0 bg-black/50 rounded-md`}></div>;
+    }
+    
+    const imagePath = `assets/pic/${item.name}.png`;
+
+    if (imageError) {
+        // Fallback to emoji if image fails to load
+        let defaultIcon = '📦';
+        if (item.category === 'Ship') defaultIcon = '🛸';
+        else if (item.category === 'Blueprint') defaultIcon = '📜';
+        else if (item.category === 'Module') defaultIcon = '🔧';
+        else if (item.category === 'Ore' || item.category === 'Mineral') defaultIcon = '💎';
+        else if (item.category === 'Drone') defaultIcon = '🤖';
+        else if (item.category === 'Ammunition') defaultIcon = '💥';
+        const textSizeClass = size === 'small' ? 'text-base' : 'text-xl';
+        
+        return (
+            <div className={`${sizeClass} flex-shrink-0 flex items-center justify-center bg-black/50 rounded-md`} title={`${item.name} (image not found)`}>
+                <span className={textSizeClass}>{defaultIcon}</span>
+            </div>
+        );
+    }
+
+    return (
+        <div className={`${sizeClass} flex-shrink-0 bg-black/50 rounded-md flex items-center justify-center overflow-hidden`} title={item.name}>
+            <img src={imagePath} alt={item.name} className="w-full h-full object-contain" onError={() => setImageError(true)} />
+        </div>
+    );
+};
+
 
 export const SystemInfoUI: React.FC<{
     systemName: string;
@@ -267,9 +309,12 @@ export const HangarModal: React.FC<{
                     const isActive = playerState.currentShipId === shipId;
                     return (
                         <div key={shipId} className="flex justify-between items-center p-2.5 border-b border-gray-700 hover:bg-gray-800">
-                            <div>
-                                <strong className="text-lg">{ship.name}</strong>
-                                <span className="text-gray-400 ml-4">({ship.class})</span>
+                            <div className="flex items-center gap-3">
+                                <ItemIcon item={ship} />
+                                <div>
+                                    <strong className="text-lg">{ship.name}</strong>
+                                    <span className="text-gray-400 ml-4">({ship.class})</span>
+                                </div>
                             </div>
                             <UIButton onClick={() => onActivateShip(shipId)} disabled={isActive}>
                                 {isActive ? 'Active' : 'Activate'}
@@ -353,7 +398,10 @@ export const ItemHangarModal: React.FC<{
                             const isShip = itemData?.category === 'Ship';
                             return (
                                 <li key={`${itemId}-${index}`} className="flex justify-between items-center p-1.5 hover:bg-gray-700">
-                                    <span className={isShip ? 'text-cyan-400' : ''}>{itemData?.name || itemId}</span>
+                                    <div className="flex items-center gap-2">
+                                        <ItemIcon item={itemData} />
+                                        <span className={isShip ? 'text-cyan-400' : ''}>{itemData?.name || itemId}</span>
+                                    </div>
                                     <UIButton onClick={() => handleMoveItem(itemId, type)} className="!px-2 !py-1">{transferLabel}</UIButton>
                                 </li>
                             );
@@ -366,7 +414,10 @@ export const ItemHangarModal: React.FC<{
                             .sort(([matA], [matB]) => (getItemData(matA)?.name || matA).localeCompare(getItemData(matB)?.name || matB))
                             .map(([matId, qty]) => (
                              <li key={matId} className="flex justify-between items-center p-1.5 hover:bg-gray-700">
-                                 <span>{getItemData(matId)?.name || matId}</span>
+                                <div className="flex items-center gap-2">
+                                    <ItemIcon item={getItemData(matId)} />
+                                    <span>{getItemData(matId)?.name || matId}</span>
+                                </div>
                                  <div className="flex items-center gap-2">
                                      <span>{qty.toLocaleString()}</span>
                                      <UIButton onClick={() => handleMoveMaterialStack(matId, qty, type)} className="!px-2 !py-1">{transferLabel}</UIButton>
@@ -442,7 +493,10 @@ export const CraftingInterface: React.FC<{
                                     onClick={() => setSelectedBpId(bpId)}
                                     className={`p-2.5 cursor-pointer border-b border-gray-700 hover:bg-gray-700 ${selectedBpId === bpId ? 'bg-indigo-800' : ''}`}
                                 >
-                                    {BLUEPRINT_DATA[bpId]?.name || bpId}
+                                    <div className="flex items-center gap-2">
+                                        <ItemIcon item={BLUEPRINT_DATA[bpId]} />
+                                        <span>{BLUEPRINT_DATA[bpId]?.name || bpId}</span>
+                                    </div>
                                 </li>
                             ))}
                         </ul>
@@ -466,7 +520,10 @@ export const CraftingInterface: React.FC<{
                                 const matName = getItemData(mat)?.name || mat;
                                 return (
                                     <li key={mat} className="flex justify-between p-1.5 border-b border-gray-700/50 last:border-b-0">
-                                        <span>{matName}</span>
+                                        <div className="flex items-center gap-2">
+                                            <ItemIcon item={getItemData(mat)} />
+                                            <span>{matName}</span>
+                                        </div>
                                         <span className="flex-grow border-b border-dotted border-gray-600 mx-2"></span>
                                         <span className="font-semibold">
                                             <span className={hasEnough ? 'text-green-400' : 'text-red-400'}>{playerQty.toLocaleString()}</span> / {requiredQty.toLocaleString()}
@@ -558,7 +615,10 @@ export const FittingInterface: React.FC<{
                     <div key={index} className="flex justify-between items-center p-1.5 bg-black/20 rounded h-10">
                         {moduleId ? (
                             <>
-                                <span className="text-cyan-300">{getItemData(moduleId)?.name}</span>
+                                <div className="flex items-center gap-2">
+                                    <ItemIcon item={getItemData(moduleId)} size="small" />
+                                    <span className="text-cyan-300">{getItemData(moduleId)?.name}</span>
+                                </div>
                                 <UIButton onClick={() => handleUnfitModule(type, index)} className="!px-2 !py-1">Unfit</UIButton>
                             </>
                         ) : (
@@ -586,7 +646,10 @@ export const FittingInterface: React.FC<{
                         <div className="space-y-1">
                             {playerState.droneBayCargo.map((droneId, index) => (
                                 <div key={`${droneId}-${index}`} className="flex justify-between items-center p-1.5 bg-black/20 rounded h-10">
-                                    <span className="text-yellow-300">{getItemData(droneId)?.name}</span>
+                                    <div className="flex items-center gap-2">
+                                        <ItemIcon item={getItemData(droneId)} size="small" />
+                                        <span className="text-yellow-300">{getItemData(droneId)?.name}</span>
+                                    </div>
                                     <UIButton onClick={() => onUnloadDrone(droneId, index)} className="!px-2 !py-1">Unload</UIButton>
                                 </div>
                             ))}
@@ -606,7 +669,10 @@ export const FittingInterface: React.FC<{
                             if (itemData?.category !== 'Module') return null;
                             return (
                                 <li key={`${itemId}-${index}`} className="flex justify-between items-center p-1.5 hover:bg-gray-700">
-                                    <span>{itemData.name} <span className="text-xs text-gray-400">({itemData.slot})</span></span>
+                                    <div className="flex items-center gap-2">
+                                        <ItemIcon item={itemData} />
+                                        <span>{itemData.name} <span className="text-xs text-gray-400">({(itemData as Module).slot})</span></span>
+                                    </div>
                                     <UIButton onClick={() => handleFitModule(itemId, index)} className="!px-2 !py-1">Fit</UIButton>
                                 </li>
                             );
@@ -621,7 +687,10 @@ export const FittingInterface: React.FC<{
                             if (itemData?.category !== 'Drone') return null;
                             return (
                                 <li key={`${itemId}-${index}`} className="flex justify-between items-center p-1.5 hover:bg-gray-700">
-                                    <span>{itemData.name}</span>
+                                     <div className="flex items-center gap-2">
+                                        <ItemIcon item={itemData} />
+                                        <span>{itemData.name}</span>
+                                    </div>
                                     <UIButton onClick={() => onLoadDrone(itemId)} className="!px-2 !py-1">Load</UIButton>
                                 </li>
                             );
@@ -739,10 +808,13 @@ export const ReprocessingInterface: React.FC<{
                             const remainingQty = quantity - inQueueQty;
                             return (
                                 <li key={oreId} className="flex justify-between items-center p-2 border-b border-gray-700">
-                                    <div>
-                                        <span className="font-semibold">{oreData.icon || '⛏️'} {oreData.name}</span>
-                                        <br />
-                                        <span className="text-sm text-gray-400">Available: {remainingQty.toLocaleString()}</span>
+                                    <div className="flex items-center gap-2">
+                                        <ItemIcon item={oreData} />
+                                        <div>
+                                            <span className="font-semibold">{oreData.name}</span>
+                                            <br />
+                                            <span className="text-sm text-gray-400">Available: {remainingQty.toLocaleString()}</span>
+                                        </div>
                                     </div>
                                     <UIButton onClick={() => handleAddToQueue(oreId, remainingQty)} disabled={remainingQty <= 0}>Add All</UIButton>
                                 </li>
@@ -769,7 +841,10 @@ export const ReprocessingInterface: React.FC<{
                                 const oreData = getItemData(oreId) as Ore;
                                 return (
                                     <li key={oreId} className="flex justify-between items-center p-2 border-b border-gray-700/50 last:border-b-0">
-                                        <span>{oreData.icon || '⛏️'} {oreData.name}</span>
+                                        <div className="flex items-center gap-2">
+                                            <ItemIcon item={oreData} />
+                                            <span>{oreData.name}</span>
+                                        </div>
                                         <input
                                             type="number"
                                             value={quantity}
@@ -795,7 +870,10 @@ export const ReprocessingInterface: React.FC<{
                                 const mineralData = getItemData(mineralId) as Mineral;
                                 return (
                                     <li key={mineralId} className="flex justify-between items-center p-2 border-b border-gray-700/50 last:border-b-0">
-                                        <span>{mineralData.icon || '▪️'} {mineralData.name}</span>
+                                        <div className="flex items-center gap-2">
+                                            <ItemIcon item={mineralData} />
+                                            <span>{mineralData.name}</span>
+                                        </div>
                                         <span className="font-semibold">{quantity.toLocaleString()}</span>
                                     </li>
                                 )
@@ -958,7 +1036,12 @@ export const MarketInterface: React.FC<{
                                         const price = (item.basePrice || 0) * MARKET_BUY_PRICE_MODIFIER;
                                         return (
                                             <tr key={item.id} className="border-b border-gray-700 hover:bg-gray-700/50">
-                                                <td className="p-2">{item.name}</td>
+                                                <td className="p-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <ItemIcon item={item} />
+                                                        <span>{item.name}</span>
+                                                    </div>
+                                                </td>
                                                 <td className="p-2">{price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                                                 <td className="p-2"><input type="number" value={quantities[item.id] || ''} onChange={e => handleQuantityChange(item.id, e.target.value)} className="w-full bg-gray-900 text-white p-1 border border-gray-600" min="1" /></td>
                                                 <td className="p-2"><UIButton onClick={() => handleBuy(item)} className="w-full">Buy</UIButton></td>
@@ -985,7 +1068,12 @@ export const MarketInterface: React.FC<{
                                         const price = (item.basePrice || 0) * MARKET_SELL_PRICE_MODIFIER;
                                         return (
                                             <tr key={item.id} className="border-b border-gray-700 hover:bg-gray-700/50">
-                                                <td className="p-2">{item.name}</td>
+                                                <td className="p-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <ItemIcon item={item} />
+                                                        <span>{item.name}</span>
+                                                    </div>
+                                                </td>
                                                 <td className="p-2">{qty.toLocaleString()}</td>
                                                 <td className="p-2">{price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                                                 <td className="p-2"><input type="number" value={quantities[item.id] || ''} onChange={e => handleQuantityChange(item.id, e.target.value)} className="w-full bg-gray-900 text-white p-1 border border-gray-600" min="1" max={qty}/></td>
@@ -1520,12 +1608,15 @@ export const MissionTrackerUI: React.FC<{ playerState: PlayerState }> = ({ playe
                         <div key={mission.id}>
                             <p className="font-bold m-0 leading-tight">{mission.title}</p>
                             <p className="text-xs text-gray-400 m-0 leading-tight">Agent: {mission.agent.name} ({mission.agent.corporation})</p>
-                            <div className="text-sm">
-                                <span className="text-gray-300">{objectiveItem?.name}: </span>
-                                <span className={complete ? 'text-green-400' : 'text-yellow-400'}>
-                                    {Math.min(current, required).toLocaleString()} / {required.toLocaleString()}
-                                </span>
-                                {complete && <span className="text-cyan-400 text-xs ml-2">[Ready for turn-in]</span>}
+                            <div className="text-sm flex items-center gap-2 mt-1">
+                                <ItemIcon item={objectiveItem} size="small" />
+                                <div>
+                                    <span className="text-gray-300">{objectiveItem?.name}: </span>
+                                    <span className={complete ? 'text-green-400' : 'text-yellow-400'}>
+                                        {Math.min(current, required).toLocaleString()} / {required.toLocaleString()}
+                                    </span>
+                                    {complete && <span className="text-cyan-400 text-xs ml-2">[Ready for turn-in]</span>}
+                                </div>
                             </div>
                         </div>
                     );
@@ -1725,14 +1816,20 @@ export const AgentInterface: React.FC<{
                                 <div>
                                     <h5 className="text-lg font-semibold text-yellow-400">Objective:</h5>
                                     {Object.entries(missionToShow.objectives).map(([oreId, qty]) => (
-                                        <p key={oreId} className="m-0">{getItemData(oreId)?.name}: {qty.toLocaleString()} units</p>
+                                        <div key={oreId} className="flex items-center gap-2">
+                                            <ItemIcon item={getItemData(oreId)} size="small" />
+                                            <span className="m-0">{getItemData(oreId)?.name}: {qty.toLocaleString()} units</span>
+                                        </div>
                                     ))}
                                 </div>
                                 <div>
                                     <h5 className="text-lg font-semibold text-green-400">Reward:</h5>
                                     {missionToShow.rewards.isk && <p className="m-0">{missionToShow.rewards.isk.toLocaleString()} ISK</p>}
                                     {missionToShow.rewards.items?.map(item => (
-                                        <p key={item.id} className="m-0">{item.quantity}x {getItemData(item.id)?.name}</p>
+                                        <div key={item.id} className="flex items-center gap-2">
+                                            <ItemIcon item={getItemData(item.id)} size="small" />
+                                            <span className="m-0">{item.quantity}x {getItemData(item.id)?.name}</span>
+                                        </div>
                                     ))}
                                 </div>
                             </div>

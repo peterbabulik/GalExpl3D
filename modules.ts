@@ -906,14 +906,11 @@ const DRONE_DATA: Record<string, Drone> = {
             orbitDistance: 1000,
             bandwidthUsage: 5,
         },
-    }
+    },
 };
 
-export const OTHER_ITEM_DATA: Record<string, ItemData> = {
+// FIX: Combine and export AMMUNITION_DATA and DRONE_DATA as OTHER_ITEM_DATA to be used in constants.ts.
+export const OTHER_ITEM_DATA: Record<string, Ammunition | Drone> = {
     ...AMMUNITION_DATA,
     ...DRONE_DATA,
-    'comp_construction_blocks': { id: 'comp_construction_blocks', name: 'Construction Blocks', category: 'Component' },
-    'cons_nanite_paste': { id: 'cons_nanite_paste', name: 'Nanite Repair Paste', category: 'Consumable' },
-    'structure_small_station': { id: 'structure_small_station', name: 'Small Station', category: 'Structure' },
-    'structure_mining_platform': { id: 'structure_mining_platform', name: 'Mining Platform', category: 'Structure' },
 };

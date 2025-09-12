@@ -16,8 +16,7 @@ export const ORE_DATA: Record<string, Ore> = {
             'min_tritanium': 415
         },
         security: 1.0,
-        rarity: 'common',
-        icon: '⛏️'
+        rarity: 'common'
     },
     'ore_scordite': {
         id: 'ore_scordite',
@@ -31,8 +30,7 @@ export const ORE_DATA: Record<string, Ore> = {
             'min_pyerite': 173
         },
         security: 1.0,
-        rarity: 'common',
-        icon: '⛏️'
+        rarity: 'common'
     },
     'ore_pyroxeres': {
         id: 'ore_pyroxeres',
@@ -48,8 +46,7 @@ export const ORE_DATA: Record<string, Ore> = {
             'min_nocxium': 5
         },
         security: 0.9,
-        rarity: 'common',
-        icon: '⛏️'
+        rarity: 'common'
     },
     
     // Uncommon Ores (Low-Sec)
@@ -66,8 +63,7 @@ export const ORE_DATA: Record<string, Ore> = {
             'min_mexallon': 107
         },
         security: 0.7,
-        rarity: 'uncommon',
-        icon: '💎'
+        rarity: 'uncommon'
     },
     'ore_omber': {
         id: 'ore_omber',
@@ -82,8 +78,7 @@ export const ORE_DATA: Record<string, Ore> = {
             'min_isogen': 85
         },
         security: 0.7,
-        rarity: 'uncommon',
-        icon: '💎'
+        rarity: 'uncommon'
     },
     'ore_kernite': {
         id: 'ore_kernite',
@@ -98,8 +93,7 @@ export const ORE_DATA: Record<string, Ore> = {
             'min_isogen': 134
         },
         security: 0.7,
-        rarity: 'uncommon',
-        icon: '💎'
+        rarity: 'uncommon'
     },
     
     // Rare Ores (Low-Sec to Null-Sec)
@@ -118,8 +112,7 @@ export const ORE_DATA: Record<string, Ore> = {
             'min_zydrine': 3
         },
         security: 0.4,
-        rarity: 'rare',
-        icon: '🔷'
+        rarity: 'rare'
     },
     'ore_hemorphite': {
         id: 'ore_hemorphite',
@@ -137,8 +130,7 @@ export const ORE_DATA: Record<string, Ore> = {
             'min_zydrine': 8
         },
         security: 0.2,
-        rarity: 'rare',
-        icon: '🔷'
+        rarity: 'rare'
     },
     'ore_hedbergite': {
         id: 'ore_hedbergite',
@@ -154,8 +146,7 @@ export const ORE_DATA: Record<string, Ore> = {
             'min_zydrine': 19
         },
         security: 0.2,
-        rarity: 'rare',
-        icon: '🔷'
+        rarity: 'rare'
     },
     
     // Exceptional Ores (Null-Sec)
@@ -172,8 +163,7 @@ export const ORE_DATA: Record<string, Ore> = {
             'min_megacyte': 230
         },
         security: 0.0,
-        rarity: 'exceptional',
-        icon: '⭐'
+        rarity: 'exceptional'
     },
     'ore_bistot': {
         id: 'ore_bistot',
@@ -189,8 +179,7 @@ export const ORE_DATA: Record<string, Ore> = {
             'min_megacyte': 128
         },
         security: 0.0,
-        rarity: 'exceptional',
-        icon: '⭐'
+        rarity: 'exceptional'
     },
     'ore_crokite': {
         id: 'ore_crokite',
@@ -206,8 +195,7 @@ export const ORE_DATA: Record<string, Ore> = {
             'min_megacyte': 254
         },
         security: 0.0,
-        rarity: 'exceptional',
-        icon: '⭐'
+        rarity: 'exceptional'
     },
     
     'ore_blue_ice': {
@@ -224,8 +212,7 @@ export const ORE_DATA: Record<string, Ore> = {
             'min_oxygen_isotopes': 300
         },
         security: 0.5,
-        rarity: 'rare',
-        icon: '🧊'
+        rarity: 'rare'
     },
     
     'ore_spodumain': {
@@ -242,8 +229,7 @@ export const ORE_DATA: Record<string, Ore> = {
             'min_isogen': 245
         },
         security: 0.0,
-        rarity: 'rare',
-        icon: '🌙'
+        rarity: 'rare'
     }
 };
 
@@ -254,8 +240,7 @@ export const MINERAL_DATA: Record<string, Mineral> = {
         category: 'Mineral',
         volume: 0.01,
         basePrice: 5,
-        description: 'The most common mineral, used in virtually all manufacturing.',
-        icon: '▪️'
+        description: 'The most common mineral, used in virtually all manufacturing.'
     },
     'min_pyerite': {
         id: 'min_pyerite',
@@ -263,8 +248,7 @@ export const MINERAL_DATA: Record<string, Mineral> = {
         category: 'Mineral',
         volume: 0.01,
         basePrice: 10,
-        description: 'Common mineral required for most ship construction.',
-        icon: '▪️'
+        description: 'Common mineral required for most ship construction.'
     },
     'min_mexallon': {
         id: 'min_mexallon',
@@ -272,8 +256,7 @@ export const MINERAL_DATA: Record<string, Mineral> = {
         category: 'Mineral',
         volume: 0.01,
         basePrice: 40,
-        description: 'Versatile mineral used in advanced alloys.',
-        icon: '▫️'
+        description: 'Versatile mineral used in advanced alloys.'
     },
     'min_isogen': {
         id: 'min_isogen',
@@ -281,8 +264,7 @@ export const MINERAL_DATA: Record<string, Mineral> = {
         category: 'Mineral',
         volume: 0.01,
         basePrice: 80,
-        description: 'Uncommon mineral essential for shield systems.',
-        icon: '▫️'
+        description: 'Uncommon mineral essential for shield systems.'
     },
     'min_nocxium': {
         id: 'min_nocxium',
@@ -290,8 +272,7 @@ export const MINERAL_DATA: Record<string, Mineral> = {
         category: 'Mineral',
         volume: 0.01,
         basePrice: 400,
-        description: 'Rare mineral used in advanced electronics.',
-        icon: '◽'
+        description: 'Rare mineral used in advanced electronics.'
     },
     'min_zydrine': {
         id: 'min_zydrine',
@@ -299,8 +280,7 @@ export const MINERAL_DATA: Record<string, Mineral> = {
         category: 'Mineral',
         volume: 0.01,
         basePrice: 1000,
-        description: 'Rare mineral required for advanced ship systems.',
-        icon: '◽'
+        description: 'Rare mineral required for advanced ship systems.'
     },
     'min_megacyte': {
         id: 'min_megacyte',
@@ -308,8 +288,7 @@ export const MINERAL_DATA: Record<string, Mineral> = {
         category: 'Mineral',
         volume: 0.01,
         basePrice: 2000,
-        description: 'Very rare mineral used in capital ship construction.',
-        icon: '⬜'
+        description: 'Very rare mineral used in capital ship construction.'
     },
     'min_morphite': {
         id: 'min_morphite',
@@ -317,8 +296,7 @@ export const MINERAL_DATA: Record<string, Mineral> = {
         category: 'Mineral',
         volume: 0.01,
         basePrice: 10000,
-        description: 'Extremely rare mineral used in advanced technology.',
-        icon: '⬜'
+        description: 'Extremely rare mineral used in advanced technology.'
     },
     'min_heavy_water': {
         id: 'min_heavy_water',
@@ -326,8 +304,7 @@ export const MINERAL_DATA: Record<string, Mineral> = {
         category: 'Mineral',
         volume: 0.4,
         basePrice: 300,
-        description: 'Isotope used in reactor fuel.',
-        icon: '💧'
+        description: 'Isotope used in reactor fuel.'
     },
     'min_liquid_ozone': {
         id: 'min_liquid_ozone',
@@ -335,8 +312,7 @@ export const MINERAL_DATA: Record<string, Mineral> = {
         category: 'Mineral',
         volume: 0.4,
         basePrice: 400,
-        description: 'Coolant for jump drives.',
-        icon: '💧'
+        description: 'Coolant for jump drives.'
     },
     'min_strontium': {
         id: 'min_strontium',
@@ -344,8 +320,7 @@ export const MINERAL_DATA: Record<string, Mineral> = {
         category: 'Mineral',
         volume: 3.0,
         basePrice: 2500,
-        description: 'Used in siege and triage modules.',
-        icon: '🔹'
+        description: 'Used in siege and triage modules.'
     },
     'min_oxygen_isotopes': {
         id: 'min_oxygen_isotopes',
@@ -353,8 +328,7 @@ export const MINERAL_DATA: Record<string, Mineral> = {
         category: 'Mineral',
         volume: 0.15,
         basePrice: 150,
-        description: 'Fuel for Gallente capital ships.',
-        icon: '⚪'
+        description: 'Fuel for Gallente capital ships.'
     }
 };
 

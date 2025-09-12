@@ -180,6 +180,7 @@ export interface BaseItem {
     description?: string;
     basePrice?: number;
     volume?: number;
+    icon?: string;
 }
 
 export interface Ore extends BaseItem {
@@ -187,12 +188,10 @@ export interface Ore extends BaseItem {
     refineYield: Record<string, number>;
     security: number;
     rarity: string;
-    icon?: string;
 }
 
 export interface Mineral extends BaseItem {
     category: 'Mineral';
-    icon?: string;
 }
 
 export interface Module extends BaseItem {
