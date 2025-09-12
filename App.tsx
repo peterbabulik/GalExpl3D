@@ -298,6 +298,7 @@ export default function App() {
         if (threeRef.current.player) {
             undockPositionRef.current = threeRef.current.player.position.clone();
         }
+        keysRef.current = {}; // Reset keyboard state to prevent "stuck keys"
         fadeTransition(() => {
             gameDataRef.current.dockedStation = station;
             setTargetData(t => ({...t, selectedTarget: null})); // Clear target on dock
@@ -1830,6 +1831,7 @@ export default function App() {
                             stationName={gameDataRef.current.dockedStation.userData.name}
                             onUndock={() => {
                                 setShowStationHelp(false);
+                                keysRef.current = {}; // Reset keyboard state to prevent "stuck keys"
                                 fadeTransition(() => setGameState(GameState.SOLAR_SYSTEM));
                             }}
                             onOpenCrafting={() => { setCraftingOpen(true); setShowStationHelp(false); }}
