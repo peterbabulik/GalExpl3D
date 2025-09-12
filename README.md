@@ -200,4 +200,6 @@ The current foundation is robust, paving the way for even deeper and more emerge
 
 <div align="center">
 <img width="1200" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/main/Pictures/WeWantYou9.png" />
+<img width="1200" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/main/Pictures/WeWantYou9.gif" />
+<img width="1200" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/main/Pictures/ChimpInZoo.gif" />
 </div>
