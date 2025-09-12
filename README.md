@@ -145,7 +145,7 @@ The project is architected as a modern web application, leveraging a powerful an
     *   Use the on-screen buttons to access the Hangar and other station services.
  
 <div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/main/Pictures/WeWantYou.png" />
+<img width="1200" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/main/Pictures/WeWantYou.png" />
 </div>
 
 ## Project Development Log & Roadmap
