@@ -166,3 +166,53 @@ This table details the properties of each ore and the amount of each mineral you
 <div align="center">
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/main/Pictures/WeWantYou.png" />
 </div>
+
+## Project Development Log & Roadmap
+
+GalExpl3D is an actively developed project that has evolved from a simple 3D flight simulation into a feature-rich space sandbox.
+
+### ✅ Implemented Features
+
+*   **V1.0 - Core Simulation (Initial Release)**
+    *   Single-file HTML/JS application.
+    *   Procedural solar system generation with realistic planetary scale and orbital mechanics.
+    *   First-person, 6-degrees-of-freedom flight model.
+
+*   **V2.0 - The Industrial Core (React Migration)**
+    *   Project migrated to a modern **React + TypeScript** architecture.
+    *   **Player Persistence:** Game state (pilot name, ISK, assets) is now saved to the browser's local storage.
+    *   **Station Services:** Full-screen UI for docking at space stations.
+    *   **Ship Hangar:** UI for managing and activating different ships owned by the player.
+    *   **Item Hangar:** UI for transferring items between a ship's cargo and station storage.
+    *   **Reprocessing:** Service for refining raw ore into usable minerals.
+    *   **Crafting:** A complete manufacturing system to build ships and modules from blueprints using minerals.
+    *   **Marketplace:** Functional market for buying blueprints and selling materials.
+    *   **Ship Fitting:** A comprehensive fitting screen to equip ships with modules, directly impacting their in-space performance.
+
+*   **V3.0 - A Living Universe**
+    *   **AI-Powered Missions:** Integration with **Google's Gemini AI** to dynamically generate unique mission text and NPC agent backstories.
+    *   **NPC Combat:** Hostile NPC pirates now spawn in lawless systems, creating risk and providing a target for combat.
+    *   **Drone Systems:**
+        *   **Combat Drones:** Players can launch and command a fleet of drones to attack hostile targets.
+        *   **Mining Drones:** Players can deploy drones to automate the process of mining asteroids.
+    *   **Advanced UI:** A hierarchical System Overview panel and a dedicated in-space HUD for managing drones and combat have been implemented.
+
+### 🚀 Future Roadmap (The Vision Ahead)
+
+The current foundation is robust, paving the way for even deeper and more emergent gameplay. The next major phases of development are focused on creating a truly dynamic, shared universe.
+
+*   **Phase 1: Deepening the Simulation**
+    *   [ ] **Comprehensive Combat Mechanics:** Implementing a full damage model (Shield/Armor/Hull), weapon effects (tracking, range, damage types), and e-war modules.
+    *   [ ] **Player Skill System:** Adding a character skill tree that allows players to specialize in piloting, industry, combat, and more, providing long-term progression.
+    *   [ ] **Loot & Salvaging:** Expanding NPC loot tables to include modules and rare items. Introducing salvaging gameplay to recover components from wrecks.
+    *   [ ] **Visual Polish:** Adding 3D models for all ships, drones, and structures to replace the current placeholder geometry.
+
+*   **Phase 2: The Multiplayer Backend**
+    *   [ ] **Server Implementation:** Developing a dedicated Node.js backend to act as the authoritative server for the game world.
+    *   [ ] **Database Integration:** Storing all persistent player and world data (inventories, market orders, ship locations) in a database.
+    *   **Real-Time Communication:** Integrating WebSockets (e.g., using Socket.IO) to synchronize player actions and world state between all connected clients.
+
+*   **Phase 3: A Player-Driven Universe**
+    *   [ ] **Player-to-Player Trading:** Converting the NPC market into a fully player-driven market with buy and sell orders.
+    *   [ ] **Corporate & Fleet Systems:** Allowing players to form corporations, manage shared assets, and fly in fleets.
+    *   [ ] **(Experimental) Blockchain Integration:** Exploring the potential to move core game assets (ships, rare blueprints) onto a blockchain as NFTs, giving players true ownership of their digital assets.
