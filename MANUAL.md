@@ -192,5 +192,5 @@ This table details the properties of each ore and the amount of each mineral you
 [Back to Top](#table-of-contents)
 
 <div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/main/Pictures/WeWantYou9.gif" />
+<img width="1200" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/main/Pictures/WeWantYou9.gif" />
 </div>
