@@ -1,8 +1,9 @@
 
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
 import { GameState } from './types';
-import type { PlayerState, TooltipData, Target, TargetData, DockingData, NavObject, NavPanelItem, StorageLocation, Module, Ore, AgentData, MissionData, SolarSystemData, Drone } from './types';
+import type { PlayerState, TooltipData, Target, TargetData, DockingData, NavObject, NavPanelItem, StorageLocation, Module, Ore, AgentData, MissionData, SolarSystemData, Drone, AnyItem } from './types';
 import { 
     GALAXY_DATA,
     SOLAR_SYSTEM_DATA,
@@ -38,6 +39,9 @@ import { createAsteroidBelt } from './asteroids';
 import { startWarp, updateWarp, isWarping } from './warp';
 import { startMiningAnimation, updateMiningAnimation, stopMiningAnimation } from './mining-animation';
 import { GalaxyMap } from './GalaxyMap';
+import { spawnEnemies, updateEnemies, createEnemyLoot, updateEnemyAttacks } from './enemies';
+import type { Enemy } from './enemies';
+
 
 // --- CONSTANTS ---
 const STAR_SCALE_FACTOR = 1 / 250;
@@ -45,6 +49,8 @@ const PLANET_SCALE_FACTOR = 1 / 25;
 const ORBIT_SPEED_CONSTANT = 0.1;
 const DOCKING_RANGE = 1500;
 const MINING_RANGE = 1500;
+const LOOT_RANGE = 2500;
+const ENEMY_ATTACK_COOLDOWN = 3000; // ms
 
 interface MiningState {
     targetId: string;
@@ -137,6 +143,7 @@ export default function App() {
     const [activeModuleSlots, setActiveModuleSlots] = useState<string[]>([]);
     const [deactivatedWeaponSlots, setDeactivatedWeaponSlots] = useState<string[]>([]);
     const [droneStatus, setDroneStatus] = useState<DroneStatus>('docked');
+    const [isTakingDamage, setIsTakingDamage] = useState(false);
 
     // Persistence State
     const [isLoading, setIsLoading] = useState(true);
@@ -156,7 +163,8 @@ export default function App() {
         planets: { mesh: THREE.Mesh, pivot: THREE.Object3D, distance: number }[],
         asteroids: THREE.Mesh[],
         stations: THREE.Object3D[],
-        pirates: THREE.Object3D[],
+        enemies: Enemy[],
+        wrecks: THREE.Object3D[],
         drones: { object3D: THREE.Mesh, orbitAngle: number, orbitRadius: number, id: string }[],
         navObjects: NavObject[],
         targetedObject: THREE.Object3D | null, // hover target
@@ -164,7 +172,7 @@ export default function App() {
         dockedStation: THREE.Object3D | null,
         isMouseLooking: boolean,
     }>({
-        planets: [], asteroids: [], stations: [], pirates: [], drones: [], navObjects: [],
+        planets: [], asteroids: [], stations: [], enemies: [], wrecks: [], drones: [], navObjects: [],
         targetedObject: null, lookAtTarget: null, dockedStation: null,
         isMouseLooking: false
     });
@@ -175,6 +183,7 @@ export default function App() {
     const miningStateRef = useRef(miningState);
     const joystickVecRef = useRef(joystickVector);
     const droneMiningTimerRef = useRef<number>(0);
+    const lastEnemyAttackTimeRef = useRef<number>(0);
     
     // Refs for autosave interval
     const gameStateRef = useRef(gameState);
@@ -203,6 +212,17 @@ export default function App() {
             if (savedData) {
                 const parsedData = JSON.parse(savedData);
                 if (parsedData.playerState && parsedData.playerState.playerName) {
+                    
+                    // If loading an old save without shipHP, initialize it
+                    if (!parsedData.playerState.shipHP) {
+                        const ship = SHIP_DATA[parsedData.playerState.currentShipId];
+                        parsedData.playerState.shipHP = {
+                            shield: ship.attributes.shield, maxShield: ship.attributes.shield,
+                            armor: ship.attributes.armor, maxArmor: ship.attributes.armor,
+                            hull: ship.attributes.hull, maxHull: ship.attributes.hull,
+                        };
+                    }
+                    
                     setPlayerState(p => ({...p, ...parsedData.playerState}));
 
                     // Restore location and game state
@@ -304,6 +324,20 @@ export default function App() {
             setTargetData(t => ({...t, selectedTarget: null})); // Clear target on dock
             despawnDrones();
             setDroneStatus('docked'); // Drones are recalled on dock
+            
+            // Full repair on dock
+            setPlayerState(p => {
+                const currentShip = SHIP_DATA[p.currentShipId];
+                return {
+                    ...p,
+                    shipHP: {
+                        shield: currentShip.attributes.shield, maxShield: currentShip.attributes.shield,
+                        armor: currentShip.attributes.armor, maxArmor: currentShip.attributes.armor,
+                        hull: currentShip.attributes.hull, maxHull: currentShip.attributes.hull,
+                    }
+                };
+            });
+
             setGameState(GameState.DOCKED);
         });
     }, [fadeTransition, despawnDrones]);
@@ -350,13 +384,19 @@ export default function App() {
             }
     
             // Set up the new ship
-            newState.currentShipId = newShipId;
             const newShipData = SHIP_DATA[newShipId];
+            newState.currentShipId = newShipId;
             newState.currentShipFitting = {
                 high: Array(newShipData.slots.high).fill(null),
                 medium: Array(newShipData.slots.medium).fill(null),
                 low: Array(newShipData.slots.low).fill(null),
                 rig: Array(newShipData.slots.rig).fill(null),
+            };
+            // Reset HP for the new ship
+            newState.shipHP = {
+                shield: newShipData.attributes.shield, maxShield: newShipData.attributes.shield,
+                armor: newShipData.attributes.armor, maxArmor: newShipData.attributes.armor,
+                hull: newShipData.attributes.hull, maxHull: newShipData.attributes.hull,
             };
             
             // Reset ship cargo for the new ship
@@ -488,6 +528,7 @@ export default function App() {
         const navObj = gameDataRef.current.navObjects.find(n => n.object3D.uuid === uuid);
         if (navObj && threeRef.current.player) {
             const distance = threeRef.current.player.position.distanceTo(navObj.object3D.getWorldPosition(new THREE.Vector3()));
+            const isWreck = navObj.type === 'wreck';
             setTargetData(t => ({...t, selectedTarget: {
                 uuid: navObj.object3D.uuid,
                 object3D: navObj.object3D,
@@ -497,6 +538,7 @@ export default function App() {
                 oreQuantity: navObj.object3D.userData.oreQuantity,
                 shipName: navObj.object3D.userData.shipName,
                 hp: navObj.object3D.userData.hp,
+                loot: isWreck ? navObj.object3D.userData.loot : undefined,
             }}));
         }
     }, []);
@@ -745,16 +787,125 @@ export default function App() {
 
         return () => clearInterval(fireInterval);
     }, [gameState, targetData.selectedTarget, handleAttackTarget]);
+    
+    const handleLootWreck = useCallback(() => {
+        if (!targetData.selectedTarget || targetData.selectedTarget.type !== 'wreck') return;
+        
+        const wreck = gameDataRef.current.wrecks.find(w => w.uuid === targetData.selectedTarget!.uuid);
+        if (!wreck) return;
+        
+        const distance = threeRef.current.player.position.distanceTo(wreck.position);
+        if (distance > LOOT_RANGE) {
+            alert("You are too far away to loot the wreck.");
+            return;
+        }
+
+        const loot = wreck.userData.loot as (AnyItem & { quantity?: number })[];
+        
+        setPlayerState(p => {
+            // Cargo check
+            const currentShipData = SHIP_DATA[p.currentShipId];
+            const totalCapacity = currentShipData.attributes.cargoCapacity + (currentShipData.attributes.oreHold || 0);
+            let currentVolume = 0;
+            for (const matId in p.shipCargo.materials) {
+                currentVolume += (getItemData(matId)?.volume || 0) * p.shipCargo.materials[matId];
+            }
+            for (const itemId of p.shipCargo.items) {
+                currentVolume += (getItemData(itemId)?.volume || 0);
+            }
+            
+            let lootVolume = 0;
+            loot.forEach(item => {
+                lootVolume += (item.volume || 0.1) * (item.quantity || 1);
+            });
+
+            if (currentVolume + lootVolume > totalCapacity) {
+                setShowCargoFullMessage(true);
+                setTimeout(() => setShowCargoFullMessage(false), 3000);
+                return p;
+            }
+
+            // Add items to cargo
+            const newState = JSON.parse(JSON.stringify(p));
+            loot.forEach(item => {
+                const stackableCategories: string[] = ['Ammunition', 'Ore', 'Mineral', 'Component', 'Consumable', 'Material'];
+                if (stackableCategories.includes(item.category)) {
+                    newState.shipCargo.materials[item.id] = (newState.shipCargo.materials[item.id] || 0) + (item.quantity || 1);
+                } else {
+                    for (let i = 0; i < (item.quantity || 1); i++) {
+                        newState.shipCargo.items.push(item.id);
+                    }
+                }
+            });
+            return newState;
+        });
+
+        // Remove wreck
+        threeRef.current.scene?.remove(wreck);
+        gameDataRef.current.wrecks = gameDataRef.current.wrecks.filter(w => w.uuid !== wreck.uuid);
+        gameDataRef.current.navObjects = gameDataRef.current.navObjects.filter(n => n.object3D.uuid !== wreck.uuid);
+        handleDeselectTarget();
+
+    }, [targetData.selectedTarget, handleDeselectTarget]);
+
+
+    const handleTakeDamage = useCallback((damage: number) => {
+        setIsTakingDamage(true);
+        setTimeout(() => setIsTakingDamage(false), 200);
+
+        setPlayerState(p => {
+            const newHP = { ...p.shipHP };
+            let remainingDamage = damage;
+
+            if (newHP.shield > 0) {
+                const damageToShield = Math.min(newHP.shield, remainingDamage);
+                newHP.shield -= damageToShield;
+                remainingDamage -= damageToShield;
+            }
+            if (remainingDamage > 0 && newHP.armor > 0) {
+                const damageToArmor = Math.min(newHP.armor, remainingDamage);
+                newHP.armor -= damageToArmor;
+                remainingDamage -= damageToArmor;
+            }
+            if (remainingDamage > 0 && newHP.hull > 0) {
+                newHP.hull -= remainingDamage;
+            }
+            
+            if (newHP.hull <= 0) {
+                console.error("PLAYER SHIP DESTROYED!");
+                // TODO: Handle player destruction
+            }
+
+            return { ...p, shipHP: newHP };
+        });
+    }, []);
 
     // Effect to handle target destruction from any source
     useEffect(() => {
         if (targetData.selectedTarget?.type === 'pirate' && targetData.selectedTarget?.hp && targetData.selectedTarget.hp.hull <= 0) {
             console.log(`${targetData.selectedTarget.name} destroyed!`);
-            // Despawn logic
-            targetData.selectedTarget.object3D.visible = false;
-            threeRef.current.scene?.remove(targetData.selectedTarget.object3D);
-            gameDataRef.current.pirates = gameDataRef.current.pirates.filter(p => p.uuid !== targetData.selectedTarget?.uuid);
+
+            const enemyIndex = gameDataRef.current.enemies.findIndex(e => e.object3D.uuid === targetData.selectedTarget?.uuid);
+            if (enemyIndex === -1) return;
+
+            const enemy = gameDataRef.current.enemies[enemyIndex];
+            const lastPosition = enemy.object3D.position.clone();
+            
+            // 1. Add bounty
+            setPlayerState(p => ({ ...p, isk: p.isk + enemy.bounty }));
+
+            // 2. Create loot wreck
+            const wreck = createEnemyLoot(threeRef.current.scene, enemy, lastPosition);
+            if (wreck) {
+                gameDataRef.current.wrecks.push(wreck);
+                gameDataRef.current.navObjects.push({ name: wreck.userData.name, type: 'wreck', object3D: wreck });
+            }
+
+            // 3. Despawn logic
+            threeRef.current.scene?.remove(enemy.object3D);
+            gameDataRef.current.enemies.splice(enemyIndex, 1);
             gameDataRef.current.navObjects = gameDataRef.current.navObjects.filter(n => n.object3D.uuid !== targetData.selectedTarget?.uuid);
+
             handleDeselectTarget();
         }
     }, [targetData.selectedTarget, handleDeselectTarget]);
@@ -1030,7 +1181,8 @@ export default function App() {
             gameData.planets = [];
             gameData.asteroids = [];
             gameData.stations = [];
-            gameData.pirates = [];
+            gameData.enemies = [];
+            gameData.wrecks = [];
             gameData.drones = [];
             gameData.navObjects = [];
         };
@@ -1045,44 +1197,6 @@ export default function App() {
             station.add(spine);
             station.scale.set(0.5, 0.5, 0.5);
             return station;
-        };
-        
-        const spawnPirates = (systemData: SolarSystemData) => {
-            const pirateCount = 5; // Low presence
-            const pirateGeometry = new THREE.ConeGeometry(15, 40, 4); // Pyramid-like
-            const pirateMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000, metalness: 0.5, roughness: 0.6 });
-
-            const lastPlanetDistance = systemData.planets.length > 0 
-                ? systemData.planets[systemData.planets.length - 1]!.distance 
-                : 8000;
-            const innerRadius = lastPlanetDistance + 2000;
-            const outerRadius = innerRadius + 10000;
-
-            for (let i = 0; i < pirateCount; i++) {
-                const pirate = new THREE.Mesh(pirateGeometry, pirateMaterial);
-                
-                const angle = Math.random() * Math.PI * 2;
-                const radius = THREE.MathUtils.randFloat(innerRadius, outerRadius);
-                const x = Math.cos(angle) * radius;
-                const z = Math.sin(angle) * radius;
-                const y = THREE.MathUtils.randFloatSpread(400);
-                pirate.position.set(x, y, z);
-
-                pirate.userData = {
-                    type: 'pirate',
-                    name: 'Guristas Rookie',
-                    shipName: 'Merlin',
-                    hp: {
-                        shield: 400, maxShield: 400,
-                        armor: 200, maxArmor: 200,
-                        hull: 300, maxHull: 300,
-                    }
-                };
-                
-                three.scene.add(pirate);
-                gameData.pirates.push(pirate);
-                gameData.navObjects.push({ name: pirate.userData.name, type: 'pirate', object3D: pirate });
-            }
         };
 
         const createSolarSystem = (systemId: number) => {
@@ -1150,10 +1264,13 @@ export default function App() {
                     gameData.navObjects.push({ name: asteroid.userData.ore.name, type: 'asteroid', object3D: asteroid });
                 }
             });
+            
+            const newEnemies = spawnEnemies(three.scene, systemId);
+            gameData.enemies = newEnemies;
+            newEnemies.forEach(enemy => {
+                gameData.navObjects.push({ name: enemy.object3D.userData.name, type: 'pirate', object3D: enemy.object3D });
+            });
 
-            if (systemData.piratePresence) {
-                spawnPirates(systemData);
-            }
 
             three.player = new THREE.Object3D();
             if (loadedPositionRef.current && loadedQuaternionRef.current) {
@@ -1393,7 +1510,7 @@ export default function App() {
                 }
             }
 
-            const targetableObjects = [...gameData.asteroids, ...gameData.stations, ...gameData.pirates];
+            const targetableObjects = [...gameData.asteroids, ...gameData.stations, ...gameData.enemies.map(e => e.object3D), ...gameData.wrecks];
             let closestObject = null;
             let minDistance = 2000;
             const tempVec = new THREE.Vector3();
@@ -1431,6 +1548,8 @@ export default function App() {
                     content += `<br>Quantity: ${data.oreQuantity}`;
                 } else if (data.type === 'pirate') {
                     content += `<br>Ship: ${data.shipName}`;
+                } else if (data.type === 'wreck') {
+                    content += `<br>Contains loot`;
                 }
                 setTooltipData(d => ({...d, visible: true, content}));
             } else {
@@ -1485,6 +1604,16 @@ export default function App() {
                     if (currentShip) {
                         updateSolarSystem(delta, currentShip);
                         updateDrones(delta, currentDroneStatus);
+                        updateEnemies(gameData.enemies, three.player, delta);
+
+                        const now = performance.now();
+                        if (now - lastEnemyAttackTimeRef.current > ENEMY_ATTACK_COOLDOWN) {
+                            lastEnemyAttackTimeRef.current = now;
+                            const totalDamage = updateEnemyAttacks(gameData.enemies, three.player);
+                            if (totalDamage > 0) {
+                                handleTakeDamage(totalDamage);
+                            }
+                        }
                     }
                 }
 
@@ -1742,6 +1871,11 @@ export default function App() {
             data-miningtarget={miningState?.targetId || ''}
             data-dronestatus={droneStatus}
         >
+             <div
+                className={`fixed inset-0 z-[250] pointer-events-none transition-all duration-200 ease-out ${
+                    isTakingDamage ? 'shadow-[inset_0_0_100px_30px_rgba(255,0,0,0.5)]' : ''
+                }`}
+            />
             {gameState === GameState.GALAX_MAP ? (
                 <GalaxyMap onSystemSelect={handleSystemSelect} />
             ) : (
@@ -1765,7 +1899,7 @@ export default function App() {
 
                     {gameState === GameState.SOLAR_SYSTEM && !isModalOpen && (
                          <div className="absolute top-28 left-2.5 z-5 flex flex-col gap-4">
-                            <ShipStatsUI playerState={playerState} />
+                            <ShipStatsUI playerState={playerState} shipHP={playerState.shipHP} />
                             <MissionTrackerUI playerState={playerState} />
                         </div>
                     )}
@@ -1790,6 +1924,7 @@ export default function App() {
                                     dockAtStation(targetData.selectedTarget.object3D);
                                 }
                             }}
+                            onLootWreck={handleLootWreck}
                         />
                     }
                     

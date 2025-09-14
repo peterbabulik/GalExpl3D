@@ -21,6 +21,7 @@ const MINING_RANGE = 1500;
 const WARP_MIN_DISTANCE = 1000;
 const MARKET_BUY_PRICE_MODIFIER = 1.1; // Stations sell at 110% base price
 const MARKET_SELL_PRICE_MODIFIER = 0.9; // Stations buy at 90% base price
+const LOOT_RANGE = 2500;
 
 // --- UTILITY FUNCTIONS ---
 const hasMaterials = (playerMaterials: Record<string, number>, required: Record<string, number>) => {
@@ -1188,9 +1189,10 @@ export const NavPanel: React.FC<{
     selectedTargetId: string | null;
     onSelectTarget: (uuid: string) => void;
 }> = ({ data, selectedTargetId, onSelectTarget }) => {
-    const celestials = data.filter(item => item.type !== 'asteroid' && item.type !== 'pirate');
+    const celestials = data.filter(item => item.type !== 'asteroid' && item.type !== 'pirate' && item.type !== 'wreck');
     const npcs = data.filter(item => item.type === 'pirate');
     const asteroids = data.filter(item => item.type === 'asteroid');
+    const wrecks = data.filter(item => item.type === 'wreck');
 
     const typeOrder = { 'star': 0, 'planet': 1, 'station': 2 };
     celestials.sort((a, b) => (typeOrder[a.type] || 99) - (typeOrder[b.type] || 99));
@@ -1243,6 +1245,14 @@ export const NavPanel: React.FC<{
                         </ul>
                     </>
                 )}
+                 {wrecks.length > 0 && (
+                    <>
+                        <h4 className="mt-2.5 mb-1.5 border-b border-gray-600 pb-1.5 text-base">Wrecks</h4>
+                        <ul className="list-none p-0 m-0">
+                            {wrecks.map(item => renderItem(item, false, 'text-gray-400'))}
+                        </ul>
+                    </>
+                )}
                 {asteroids.length > 0 && (
                     <>
                         <h4 className="mt-2.5 mb-1.5 border-b border-gray-600 pb-1.5 text-base">Asteroids</h4>
@@ -1256,14 +1266,15 @@ export const NavPanel: React.FC<{
     );
 };
 
-export const ShipStatsUI: React.FC<{ playerState: PlayerState }> = ({ playerState }) => {
+const HPBar: React.FC<{ current: number, max: number, color: string, label: string }> = ({ current, max, color, label }) => (
+    <div className="w-full h-2 bg-black/50 relative my-0.5" title={`${label}: ${current}/${max}`}>
+        <div className={`h-full ${color}`} style={{ width: `${(current / max) * 100}%` }}></div>
+    </div>
+);
+
+export const ShipStatsUI: React.FC<{ playerState: PlayerState, shipHP: PlayerState['shipHP'] }> = ({ playerState, shipHP }) => {
     const currentShip = SHIP_DATA[playerState.currentShipId];
     if (!currentShip) return null;
-
-    // --- STATS CALCULATION ---
-    let shieldHP = currentShip.attributes.shield;
-    let armorHP = currentShip.attributes.armor;
-    const hullHP = currentShip.attributes.hull;
 
     const minerModuleIds = playerState.currentShipFitting.high.filter((id): id is string => !!id && id.includes('miner'));
     const baseModuleYield = minerModuleIds.reduce((total, modId) => {
@@ -1271,7 +1282,6 @@ export const ShipStatsUI: React.FC<{ playerState: PlayerState }> = ({ playerStat
         return total + (moduleData?.attributes?.miningYield || 0);
     }, 0);
 
-    // Apply ship bonuses to mining yield
     let yieldMultiplier = 1.0;
     currentShip.bonuses.forEach(bonus => {
         if (bonus.type === 'miningYield' && bonus.flat) {
@@ -1279,20 +1289,6 @@ export const ShipStatsUI: React.FC<{ playerState: PlayerState }> = ({ playerStat
         }
     });
     const totalMiningYield = baseModuleYield * yieldMultiplier;
-
-    // Calculate bonuses from all fitted modules
-    const allFittedModules = [
-        ...playerState.currentShipFitting.high,
-        ...playerState.currentShipFitting.medium,
-        ...playerState.currentShipFitting.low,
-    ].filter((id): id is string => !!id);
-
-    allFittedModules.forEach(moduleId => {
-        const moduleData = getItemData(moduleId) as Module;
-        if (!moduleData?.attributes) return;
-        if (moduleData.attributes.shieldHPBonus) shieldHP += moduleData.attributes.shieldHPBonus;
-        if (moduleData.attributes.armorHPBonus) armorHP += moduleData.attributes.armorHPBonus;
-    });
 
     const cycleTime = (() => {
         if (minerModuleIds.length > 0) {
@@ -1303,7 +1299,6 @@ export const ShipStatsUI: React.FC<{ playerState: PlayerState }> = ({ playerStat
     })();
     const miningYieldPerMinute = totalMiningYield > 0 ? (totalMiningYield * (60 / cycleTime)) : 0;
     
-    // Calculate Cargo stats
     const totalCapacity = currentShip.attributes.cargoCapacity + (currentShip.attributes.oreHold || 0);
     let currentVolume = 0;
     for (const matId in playerState.shipCargo.materials) {
@@ -1323,47 +1318,33 @@ export const ShipStatsUI: React.FC<{ playerState: PlayerState }> = ({ playerStat
     return (
         <div className="w-72 bg-gray-900/80 border border-gray-600 p-2.5 box-border flex flex-col allow-touch-scroll">
             <h3 className="mt-0 text-center flex-shrink-0 text-lg">Ship Stats</h3>
-            <div className="overflow-y-auto text-sm">
-                <ul className="list-none p-0 m-0">
-                    <li className="flex justify-between py-0.5 px-1">
-                        <span>Shield HP</span>
-                        <span>{shieldHP.toLocaleString()}</span>
-                    </li>
-                    <li className="flex justify-between py-0.5 px-1">
-                        <span>Armor HP</span>
-                        <span>{armorHP.toLocaleString()}</span>
-                    </li>
-                    <li className="flex justify-between py-0.5 px-1">
-                        <span>Hull HP</span>
-                        <span>{hullHP.toLocaleString()}</span>
-                    </li>
-                    <li className="flex justify-between py-0.5 px-1 border-t border-gray-700 mt-1 pt-1">
+            <div className="overflow-y-auto text-sm space-y-1">
+                <HPBar current={shipHP.shield} max={shipHP.maxShield} color="bg-cyan-500" label="Shield" />
+                <HPBar current={shipHP.armor} max={shipHP.maxArmor} color="bg-gray-400" label="Armor" />
+                <HPBar current={shipHP.hull} max={shipHP.maxHull} color="bg-yellow-500" label="Hull" />
+                
+                <div className="border-t border-gray-700 mt-2 pt-1">
+                    <div className="flex justify-between py-0.5 px-1">
                         <span>Cargo Hold</span>
                         <span>{currentVolume.toFixed(1)} / {totalCapacity.toLocaleString()} m³</span>
-                    </li>
-                    <li className="px-1 py-0.5">
+                    </div>
+                    <div className="px-1 py-0.5">
                         <div className="w-full bg-gray-700 h-2.5 rounded-sm">
                             <div 
                                 className="bg-cyan-500 h-2.5 rounded-sm" 
                                 style={{ width: `${cargoPercentage}%` }}
                             ></div>
                         </div>
-                    </li>
-                     <li className="flex justify-between py-0.5 px-1 border-t border-gray-700 mt-1 pt-1">
+                    </div>
+                     <div className="flex justify-between py-0.5 px-1 border-t border-gray-700 mt-1 pt-1">
                         <span>Mining Yield</span>
                         <span>{miningYieldPerMinute.toLocaleString(undefined, {maximumFractionDigits: 0})} / min</span>
-                    </li>
-                </ul>
+                    </div>
+                </div>
             </div>
         </div>
     );
 };
-
-const HPBar: React.FC<{ current: number, max: number, color: string, label: string }> = ({ current, max, color, label }) => (
-    <div className="w-full h-2 bg-black/50 relative my-0.5" title={`${label}: ${current}/${max}`}>
-        <div className={`h-full ${color}`} style={{ width: `${(current / max) * 100}%` }}></div>
-    </div>
-);
 
 export const SelectedTargetUI: React.FC<{
     target: Target | null;
@@ -1380,20 +1361,22 @@ export const SelectedTargetUI: React.FC<{
     clearTooltip: () => void;
     isDockable: boolean;
     onDock: () => void;
-}> = ({ target, miningState, isAutoMining, onWarp, onMine, onAutoMine, onStopMine, onLookAt, onDeselect, onAttack, setTooltip, clearTooltip, isDockable, onDock }) => {
+    onLootWreck: () => void;
+}> = ({ target, miningState, isAutoMining, onWarp, onMine, onAutoMine, onStopMine, onLookAt, onDeselect, onAttack, setTooltip, clearTooltip, isDockable, onDock, onLootWreck }) => {
     if (!target) return null;
 
     const isActivelyMining = miningState !== null || isAutoMining;
     const canMine = target.type === 'asteroid' && target.distance <= MINING_RANGE;
     const canWarp = target.distance > WARP_MIN_DISTANCE;
     const canAttack = target.type === 'pirate';
+    const canLoot = target.type === 'wreck' && target.distance <= LOOT_RANGE;
 
     const iconStyle = "w-8 h-8 p-1";
 
     return (
         <div className="absolute top-1/2 -translate-y-1/2 right-2.5 w-72 bg-gray-900/80 border border-gray-600 p-3 box-border z-5 flex flex-col gap-2">
             <div className="text-center">
-                <h3 className={`mt-0 mb-1 text-lg ${target.type === 'pirate' ? 'text-red-400' : ''}`}>{target.name}</h3>
+                <h3 className={`mt-0 mb-1 text-lg ${target.type === 'pirate' ? 'text-red-400' : ''} ${target.type === 'wreck' ? 'text-gray-400' : ''}`}>{target.name}</h3>
                 <p className="m-0 text-gray-400">{(target.distance / 1000).toFixed(1)} km</p>
                 {target.type === 'asteroid' && target.oreQuantity !== undefined && (
                     <p className="m-0 text-sm text-gray-500">Ore: {target.oreQuantity.toLocaleString()}</p>
@@ -1451,7 +1434,11 @@ export const SelectedTargetUI: React.FC<{
                     </>
                 )}
             </div>
-            
+            {target.type === 'wreck' && (
+                <UIButton onClick={onLootWreck} disabled={!canLoot} className="w-full mt-1">
+                    Load to Cargo
+                </UIButton>
+            )}
             <UIButton onClick={onDeselect} className="w-full mt-1 !py-1 !text-sm">
                 Deselect
             </UIButton>
@@ -1476,7 +1463,7 @@ export const ModuleBarUI: React.FC<{
     isAttackButtonDisabled: boolean;
     onDroneMine: () => void;
     isMineButtonDisabled: boolean;
-    selectedTargetType: 'pirate' | 'asteroid' | 'station' | 'planet' | 'star' | null;
+    selectedTargetType: 'pirate' | 'asteroid' | 'station' | 'planet' | 'star' | 'wreck' | null;
 }> = ({ playerState, onSlotClick, activeModuleSlots, deactivatedWeaponSlots, onToggleModuleGroup, setTooltip, clearTooltip, hasDroneBay, droneStatus, activeDrones, totalDrones, onToggleDrones, onDroneAttack, isAttackButtonDisabled, onDroneMine, isMineButtonDisabled, selectedTargetType }) => {
     const { high, medium, low } = playerState.currentShipFitting;
 

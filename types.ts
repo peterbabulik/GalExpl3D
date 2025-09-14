@@ -26,7 +26,7 @@ export interface Target {
     uuid: string;
     object3D: THREE.Object3D;
     name: string;
-    type: 'star' | 'planet' | 'station' | 'asteroid' | 'pirate';
+    type: 'star' | 'planet' | 'station' | 'asteroid' | 'pirate' | 'wreck';
     distance: number;
     oreQuantity?: number;
     shipName?: string;
@@ -38,6 +38,7 @@ export interface Target {
         hull: number;
         maxHull: number;
     };
+    loot?: AnyItem[];
 }
 
 export interface TargetData {
@@ -54,7 +55,7 @@ export interface DockingData {
 
 export interface NavObject {
     name: string;
-    type: 'star' | 'planet' | 'station' | 'asteroid' | 'pirate';
+    type: 'star' | 'planet' | 'station' | 'asteroid' | 'pirate' | 'wreck';
     object3D: THREE.Object3D;
     parent?: THREE.Object3D;
 }
@@ -62,7 +63,7 @@ export interface NavObject {
 export interface NavPanelItem {
     uuid: string;
     name: string;
-    type: 'star' | 'planet' | 'station' | 'asteroid' | 'pirate';
+    type: 'star' | 'planet' | 'station' | 'asteroid' | 'pirate' | 'wreck';
     distance: number;
     distanceStr: string;
     parentUUID?: string;
@@ -87,6 +88,14 @@ export interface PlayerState {
     playerName: string;
     isk: number;
     currentShipId: string;
+    shipHP: {
+        shield: number;
+        maxShield: number;
+        armor: number;
+        maxArmor: number;
+        hull: number;
+        maxHull: number;
+    };
     currentShipFitting: ShipFitting;
     shipCargo: StorageLocation;
     droneBayCargo: string[];

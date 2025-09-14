@@ -39,6 +39,8 @@ export const GALAXY_DATA: GalaxyData = {
         { id: 25, name: 'The Citadel', security: 0.3, x: 200, y: 50 },
         { id: 26, name: 'Lonetrek', security: 0.6, x: 120, y: 90 },
         { id: 27, name: 'Test', security: 0.4, x: 10, y: -50 },
+        { id: 28, name: 'Test2', security: 0.2, x: 10, y: -100 },
+        { id: 29, name: 'Test3', security: 0.0, x: 10, y: -150 },
     ],
     jumps: [
         { from: 1, to: 2 },
@@ -76,6 +78,8 @@ export const GALAXY_DATA: GalaxyData = {
         { from: 24, to: 3 },
         { from: 8, to: 20 },
         { from: 5, to: 23 },
+        { from: 27, to: 28 },
+        { from: 28, to: 29 },
     ]
 };
 
@@ -223,6 +227,20 @@ export const SOLAR_SYSTEM_DATA: Record<number, SolarSystemData> = {
         asteroidBeltType: 'dense',
         piratePresence: 'low',
     },
+    28: {
+        name: 'Test2',
+        star: { color: 0xFF6347, diameter: 900000 },
+        planets: [],
+        asteroidBeltType: 'rich',
+        piratePresence: 'medium',
+    },
+    29: {
+        name: 'Test3',
+        star: { color: 0xDC143C, diameter: 1000000 },
+        planets: [],
+        asteroidBeltType: 'exceptional',
+        piratePresence: 'high',
+    },
     // Easter Egg System
     999: {
         name: 'bzzc',
@@ -235,10 +253,26 @@ export const SOLAR_SYSTEM_DATA: Record<number, SolarSystemData> = {
     },
 };
 
+// FIX: `INITIAL_PLAYER_STATE` was used before it was defined.
+// To resolve this, `initialPlayerShipId` is declared first and used
+// to derive `initialShip` and `initialHP`, which are then used to
+// construct the full `INITIAL_PLAYER_STATE` object.
+const initialPlayerShipId = 'ship_rookie';
+const initialShip = SHIP_DATA[initialPlayerShipId];
+const initialHP = {
+    shield: initialShip.attributes.shield,
+    maxShield: initialShip.attributes.shield,
+    armor: initialShip.attributes.armor,
+    maxArmor: initialShip.attributes.armor,
+    hull: initialShip.attributes.hull,
+    maxHull: initialShip.attributes.hull,
+};
+
 export const INITIAL_PLAYER_STATE: PlayerState = {
     playerName: '',
-    isk: 0,
-    currentShipId: 'ship_rookie',
+    isk: 10000000000,
+    currentShipId: initialPlayerShipId,
+    shipHP: initialHP,
     currentShipFitting: {
         high: ['mod_miner_i', null],
         medium: [null, null],
