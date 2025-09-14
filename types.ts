@@ -214,6 +214,7 @@ export interface Module extends BaseItem {
     requirements: {
         skills: Record<string, number>;
     };
+    reprocessingYield?: Record<string, number>;
 }
 
 export interface Ammunition extends BaseItem {
@@ -225,6 +226,7 @@ export interface Ammunition extends BaseItem {
     damage?: number;
     damageType: Record<string, number>;
     durability?: number;
+    reprocessingYield?: Record<string, number>;
 }
 
 export interface Drone extends BaseItem {
@@ -239,6 +241,7 @@ export interface Drone extends BaseItem {
         orbitDistance: number;
         bandwidthUsage: number;
     };
+    reprocessingYield?: Record<string, number>;
 }
 
 

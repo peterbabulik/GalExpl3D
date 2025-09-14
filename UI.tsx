@@ -1,12 +1,10 @@
-
-
 // UI.tsx
 
 // FIX: Import 'useCallback' from 'react' to fix 'Cannot find name' errors.
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
 
-import type { PlayerState, TooltipData, Target, TargetData, DockingData, NavPanelItem, StorageLocation, Module, Ore, Mineral, AnyItem, AgentData, MissionData, Drone } from './types';
+import type { PlayerState, TooltipData, Target, TargetData, DockingData, NavPanelItem, StorageLocation, Module, Ore, Mineral, AnyItem, AgentData, MissionData, Drone, Ammunition } from './types';
 import { 
     SHIP_DATA,
     BLUEPRINT_DATA,
@@ -716,27 +714,54 @@ export const ReprocessingInterface: React.FC<{
     if (!isOpen) return null;
 
     const stationHangar = playerState.stationHangars[stationId] || { items: [], materials: {} };
-    const availableOres = Object.entries(stationHangar.materials)
-        .filter(([itemId]) => getItemData(itemId)?.category === 'Ore')
-        .sort(([idA], [idB]) => (getItemData(idA)?.name || idA).localeCompare(getItemData(idB)?.name || idB));
+    
+    // Combine all reprocessable items from the hangar
+    const reprocessableItems: Record<string, { item: AnyItem, quantity: number }> = {};
+    // Process materials (ores)
+    Object.entries(stationHangar.materials).forEach(([id, quantity]) => {
+        const item = getItemData(id);
+        if (item && item.category === 'Ore') {
+            reprocessableItems[id] = { item, quantity };
+        }
+    });
+    // Process items (modules, ammo, drones)
+    stationHangar.items.forEach(id => {
+        const item = getItemData(id);
+        if (item && (item.category === 'Module' || item.category === 'Ammunition' || item.category === 'Drone')) {
+            if (reprocessableItems[id]) {
+                reprocessableItems[id].quantity++;
+            } else {
+                reprocessableItems[id] = { item, quantity: 1 };
+            }
+        }
+    });
 
-    const handleAddToQueue = (oreId: string, quantity: number) => {
+    const allAvailableItems = Object.values(reprocessableItems)
+        .sort((a, b) => a.item.name.localeCompare(b.item.name));
+
+    const availableOres = allAvailableItems.filter(i => i.item.category === 'Ore');
+    const availableModules = allAvailableItems.filter(i => i.item.category === 'Module');
+    const availableAmmunition = allAvailableItems.filter(i => i.item.category === 'Ammunition');
+    const availableDrones = allAvailableItems.filter(i => i.item.category === 'Drone');
+
+
+    const handleAddToQueue = (itemId: string, quantity: number) => {
         if (quantity <= 0) return;
-        const currentQty = queue[oreId] || 0;
-        const availableQty = stationHangar.materials[oreId] || 0;
+        const currentQty = queue[itemId] || 0;
+        const availableQty = reprocessableItems[itemId]?.quantity || 0;
         const newQty = Math.min(availableQty, currentQty + quantity);
-        setQueue(q => ({ ...q, [oreId]: newQty }));
+        setQueue(q => ({ ...q, [itemId]: newQty }));
     };
 
-    const handleSetQueueAmount = (oreId: string, amount: string) => {
-        const availableQty = stationHangar.materials[oreId] || 0;
+    const handleSetQueueAmount = (itemId: string, amount: string) => {
+        const availableQty = reprocessableItems[itemId]?.quantity || 0;
         const quantity = Math.max(0, Math.min(availableQty, parseInt(amount, 10) || 0));
         if (quantity === 0) {
             const newQueue = { ...queue };
-            delete newQueue[oreId];
+            delete newQueue[itemId];
             setQueue(newQueue);
         } else {
-            setQueue(q => ({ ...q, [oreId]: quantity }));
+            setQueue(q => ({ ...q, [itemId]: quantity }));
         }
     };
 
@@ -746,19 +771,31 @@ export const ReprocessingInterface: React.FC<{
         const yieldPreview: Record<string, number> = {};
         const efficiency = REFINING_EFFICIENCY.base; // 50% base efficiency
 
-        for (const oreId in queue) {
-            const oreData = ORE_DATA[oreId];
-            const quantity = queue[oreId];
-            if (!oreData || !quantity) continue;
+        for (const itemId in queue) {
+            const itemData = getItemData(itemId);
+            const quantity = queue[itemId];
+            if (!itemData || !quantity) continue;
 
-            // Assuming refineYield is per 100 units of ore
-            const batches = quantity / 100;
+            if (itemData.category === 'Ore') {
+                const oreData = itemData as Ore;
+                const batches = quantity / 100;
+                for (const mineralId in oreData.refineYield) {
+                    const baseYieldPerBatch = oreData.refineYield[mineralId];
+                    const finalYield = Math.floor(batches * baseYieldPerBatch * efficiency);
+                    if (finalYield > 0) {
+                        yieldPreview[mineralId] = (yieldPreview[mineralId] || 0) + finalYield;
+                    }
+                }
+            } else if (itemData.category === 'Module' || itemData.category === 'Ammunition' || itemData.category === 'Drone') {
+                const itemYieldData = (itemData as (Module | Ammunition | Drone)).reprocessingYield;
+                if (!itemYieldData) continue;
 
-            for (const mineralId in oreData.refineYield) {
-                const baseYieldPerBatch = oreData.refineYield[mineralId];
-                const finalYield = Math.floor(batches * baseYieldPerBatch * efficiency);
-                if (finalYield > 0) {
-                    yieldPreview[mineralId] = (yieldPreview[mineralId] || 0) + finalYield;
+                for (const mineralId in itemYieldData) {
+                    const baseYieldPerItem = itemYieldData[mineralId];
+                    const finalYield = Math.floor(quantity * baseYieldPerItem * efficiency);
+                    if (finalYield > 0) {
+                        yieldPreview[mineralId] = (yieldPreview[mineralId] || 0) + finalYield;
+                    }
                 }
             }
         }
@@ -773,11 +810,26 @@ export const ReprocessingInterface: React.FC<{
             const hangar = newState.stationHangars[stationId];
             if (!hangar) return p;
 
-            // Consume ores
-            for (const oreId in queue) {
-                hangar.materials[oreId] -= queue[oreId];
-                if (hangar.materials[oreId] <= 0) {
-                    delete hangar.materials[oreId];
+            // Consume items from queue
+            for (const itemId in queue) {
+                const itemData = getItemData(itemId);
+                const quantityToRemove = queue[itemId];
+                if (!itemData) continue;
+
+                if (itemData.category === 'Ore') {
+                    hangar.materials[itemId] -= quantityToRemove;
+                    if (hangar.materials[itemId] <= 0) {
+                        delete hangar.materials[itemId];
+                    }
+                } else if (itemData.category === 'Module' || itemData.category === 'Ammunition' || itemData.category === 'Drone') {
+                    let removedCount = 0;
+                    hangar.items = hangar.items.filter((id: string) => {
+                        if (id === itemId && removedCount < quantityToRemove) {
+                            removedCount++;
+                            return false; // remove this item instance
+                        }
+                        return true; // keep this item instance
+                    });
                 }
             }
 
@@ -795,33 +847,46 @@ export const ReprocessingInterface: React.FC<{
 
     const yieldPreview = calculateYield();
 
+    const ReprocessableList: React.FC<{ title: string; items: { item: AnyItem, quantity: number }[] }> = ({ title, items }) => {
+        if (items.length === 0) return null;
+        return (
+            <>
+                <h4 className="text-lg border-b border-gray-700 pb-1 mb-2 mt-4">{title}</h4>
+                <ul className="list-none p-0 m-0">
+                    {items.map(({ item, quantity }) => {
+                        const inQueueQty = queue[item.id] || 0;
+                        const remainingQty = quantity - inQueueQty;
+                        return (
+                            <li key={item.id} className="flex justify-between items-center p-2 border-b border-gray-700">
+                                <div className="flex items-center gap-2">
+                                    <ItemIcon item={item} />
+                                    <div>
+                                        <span className="font-semibold">{item.name}</span>
+                                        <br />
+                                        <span className="text-sm text-gray-400">Available: {remainingQty.toLocaleString()}</span>
+                                    </div>
+                                </div>
+                                <UIButton onClick={() => handleAddToQueue(item.id, remainingQty)} disabled={remainingQty <= 0}>Add All</UIButton>
+                            </li>
+                        );
+                    })}
+                </ul>
+            </>
+        );
+    };
+
+
     return (
         <div className="absolute inset-0 bg-gray-900/95 z-[210] p-5 box-border flex gap-5 allow-touch-scroll">
-            {/* Left Panel: Available Ores */}
+            {/* Left Panel: Available Items */}
             <div className="bg-gray-800 border border-gray-600 p-4 flex-1 flex flex-col">
-                <h3 className="text-center text-xl mt-0 mb-4">Ores in Hangar</h3>
+                <h3 className="text-center text-xl mt-0 mb-4">Reprocessable Items</h3>
                 <div className="overflow-y-auto">
-                    {availableOres.length === 0 && <p className="text-gray-500 text-sm text-center py-4">No ores in hangar.</p>}
-                    <ul className="list-none p-0 m-0">
-                        {availableOres.map(([oreId, quantity]) => {
-                            const oreData = getItemData(oreId) as Ore;
-                            const inQueueQty = queue[oreId] || 0;
-                            const remainingQty = quantity - inQueueQty;
-                            return (
-                                <li key={oreId} className="flex justify-between items-center p-2 border-b border-gray-700">
-                                    <div className="flex items-center gap-2">
-                                        <ItemIcon item={oreData} />
-                                        <div>
-                                            <span className="font-semibold">{oreData.name}</span>
-                                            <br />
-                                            <span className="text-sm text-gray-400">Available: {remainingQty.toLocaleString()}</span>
-                                        </div>
-                                    </div>
-                                    <UIButton onClick={() => handleAddToQueue(oreId, remainingQty)} disabled={remainingQty <= 0}>Add All</UIButton>
-                                </li>
-                            );
-                        })}
-                    </ul>
+                    {allAvailableItems.length === 0 && <p className="text-gray-500 text-sm text-center py-4">No reprocessable items in hangar.</p>}
+                    <ReprocessableList title="Ores" items={availableOres} />
+                    <ReprocessableList title="Modules" items={availableModules} />
+                    <ReprocessableList title="Ammunition" items={availableAmmunition} />
+                    <ReprocessableList title="Drones" items={availableDrones} />
                 </div>
             </div>
 
@@ -833,25 +898,25 @@ export const ReprocessingInterface: React.FC<{
                 </div>
 
                 <div className="flex-grow overflow-y-auto">
-                    <h4 className="text-lg">Input Ores</h4>
+                    <h4 className="text-lg">Input Items</h4>
                     {Object.keys(queue).length === 0 ? (
-                        <p className="text-gray-500 text-sm pl-2 mb-4">Add ores from your hangar to reprocess.</p>
+                        <p className="text-gray-500 text-sm pl-2 mb-4">Add items from your hangar to reprocess.</p>
                     ) : (
                         <ul className="list-none p-0 m-0 mb-4 bg-black/20 rounded">
-                            {Object.entries(queue).map(([oreId, quantity]) => {
-                                const oreData = getItemData(oreId) as Ore;
+                            {Object.entries(queue).map(([itemId, quantity]) => {
+                                const itemData = getItemData(itemId);
                                 return (
-                                    <li key={oreId} className="flex justify-between items-center p-2 border-b border-gray-700/50 last:border-b-0">
+                                    <li key={itemId} className="flex justify-between items-center p-2 border-b border-gray-700/50 last:border-b-0">
                                         <div className="flex items-center gap-2">
-                                            <ItemIcon item={oreData} />
-                                            <span>{oreData.name}</span>
+                                            <ItemIcon item={itemData} />
+                                            <span>{itemData?.name || itemId}</span>
                                         </div>
                                         <input
                                             type="number"
                                             value={quantity}
-                                            onChange={(e) => handleSetQueueAmount(oreId, e.target.value)}
+                                            onChange={(e) => handleSetQueueAmount(itemId, e.target.value)}
                                             className="bg-gray-900 text-white text-right w-28 p-1 border border-gray-600"
-                                            max={stationHangar.materials[oreId] || 0}
+                                            max={reprocessableItems[itemId]?.quantity || 0}
                                             min="0"
                                         />
                                     </li>

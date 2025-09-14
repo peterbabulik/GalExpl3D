@@ -32,6 +32,11 @@ export const MODULE_DATA: Record<string, Module> = {
             skills: {
                 'smallProjectileTurret': 1
             }
+        },
+        reprocessingYield: {
+            'min_tritanium': 800,
+            'min_pyerite': 200,
+            'min_mexallon': 50
         }
     },
     'mod_280mm_artillery_i': {
@@ -62,6 +67,12 @@ export const MODULE_DATA: Record<string, Module> = {
             skills: {
                 'smallProjectileTurret': 1
             }
+        },
+        reprocessingYield: {
+            'min_tritanium': 1000,
+            'min_pyerite': 240,
+            'min_mexallon': 60,
+            'min_isogen': 8
         }
     },
     'mod_125mm_railgun_i': {
@@ -92,6 +103,12 @@ export const MODULE_DATA: Record<string, Module> = {
             skills: {
                 'smallHybridTurret': 1
             }
+        },
+        reprocessingYield: {
+            'min_tritanium': 880,
+            'min_pyerite': 220,
+            'min_mexallon': 56,
+            'min_isogen': 10
         }
     },
     'mod_electron_blaster_i': {
@@ -122,6 +139,12 @@ export const MODULE_DATA: Record<string, Module> = {
             skills: {
                 'smallHybridTurret': 1
             }
+        },
+        reprocessingYield: {
+            'min_tritanium': 840,
+            'min_pyerite': 208,
+            'min_mexallon': 52,
+            'min_isogen': 8
         }
     },
     'mod_pulse_laser_i': {
@@ -152,6 +175,12 @@ export const MODULE_DATA: Record<string, Module> = {
             skills: {
                 'smallEnergyTurret': 1
             }
+        },
+        reprocessingYield: {
+            'min_tritanium': 920,
+            'min_pyerite': 232,
+            'min_mexallon': 60,
+            'min_nocxium': 4
         }
     },
     'mod_rocket_launcher_i': {
@@ -184,6 +213,11 @@ export const MODULE_DATA: Record<string, Module> = {
             skills: {
                 'rocketLaunchers': 1
             }
+        },
+        reprocessingYield: {
+            'min_tritanium': 720,
+            'min_pyerite': 180,
+            'min_mexallon': 44
         }
     },
     'mod_light_missile_launcher_i': {
@@ -216,6 +250,12 @@ export const MODULE_DATA: Record<string, Module> = {
             skills: {
                 'lightMissiles': 1
             }
+        },
+        reprocessingYield: {
+            'min_tritanium': 880,
+            'min_pyerite': 220,
+            'min_mexallon': 56,
+            'min_isogen': 8
         }
     },
     'mod_miner_i': {
@@ -240,6 +280,11 @@ export const MODULE_DATA: Record<string, Module> = {
             skills: {
                 'mining': 1
             }
+        },
+        reprocessingYield: {
+            'min_tritanium': 600,
+            'min_pyerite': 120,
+            'min_mexallon': 30
         }
     },
     'mod_miner_ii': {
@@ -264,6 +309,13 @@ export const MODULE_DATA: Record<string, Module> = {
             skills: {
                 'mining': 4
             }
+        },
+        reprocessingYield: {
+            'min_tritanium': 4000,
+            'min_pyerite': 1000,
+            'min_mexallon': 240,
+            'min_isogen': 48,
+            'min_nocxium': 12
         }
     },
     'mod_strip_miner_i': {
@@ -289,6 +341,13 @@ export const MODULE_DATA: Record<string, Module> = {
                 'mining': 5,
                 'miningBarge': 1
             }
+        },
+        reprocessingYield: {
+            'min_tritanium': 40000,
+            'min_pyerite': 8000,
+            'min_mexallon': 2000,
+            'min_isogen': 400,
+            'min_nocxium': 100
         }
     },
     
@@ -314,6 +373,12 @@ export const MODULE_DATA: Record<string, Module> = {
             skills: {
                 'shieldUpgrades': 1
             }
+        },
+        reprocessingYield: {
+            'min_tritanium': 720,
+            'min_pyerite': 160,
+            'min_mexallon': 40,
+            'min_isogen': 6
         }
     },
     'mod_shield_booster_i': {
@@ -337,6 +402,13 @@ export const MODULE_DATA: Record<string, Module> = {
             skills: {
                 'shieldOperation': 1
             }
+        },
+        reprocessingYield: {
+            'min_tritanium': 800,
+            'min_pyerite': 180,
+            'min_mexallon': 44,
+            'min_isogen': 8,
+            'min_nocxium': 2
         }
     },
     'mod_invuln_field_i': {
@@ -364,6 +436,13 @@ export const MODULE_DATA: Record<string, Module> = {
             skills: {
                 'tacticalShieldManipulation': 1
             }
+        },
+        reprocessingYield: {
+            'min_tritanium': 1200,
+            'min_pyerite': 300,
+            'min_mexallon': 80,
+            'min_isogen': 16,
+            'min_nocxium': 4
         }
     },
     'mod_1mn_afterburner_i': {
@@ -387,6 +466,12 @@ export const MODULE_DATA: Record<string, Module> = {
             skills: {
                 'afterburner': 1
             }
+        },
+        reprocessingYield: {
+            'min_tritanium': 640,
+            'min_pyerite': 140,
+            'min_mexallon': 36,
+            'min_isogen': 4
         }
     },
     'mod_1mn_mwd_i': {
@@ -411,6 +496,13 @@ export const MODULE_DATA: Record<string, Module> = {
             skills: {
                 'highSpeedManeuvering': 1
             }
+        },
+        reprocessingYield: {
+            'min_tritanium': 2000,
+            'min_pyerite': 400,
+            'min_mexallon': 100,
+            'min_isogen': 20,
+            'min_nocxium': 4
         }
     },
     'mod_warp_scrambler_i': {
@@ -434,6 +526,13 @@ export const MODULE_DATA: Record<string, Module> = {
             skills: {
                 'propulsionJamming': 1
             }
+        },
+        reprocessingYield: {
+            'min_tritanium': 1000,
+            'min_pyerite': 240,
+            'min_mexallon': 60,
+            'min_isogen': 12,
+            'min_nocxium': 2
         }
     },
     'mod_stasis_web_i': {
@@ -457,6 +556,12 @@ export const MODULE_DATA: Record<string, Module> = {
             skills: {
                 'propulsionJamming': 1
             }
+        },
+        reprocessingYield: {
+            'min_tritanium': 880,
+            'min_pyerite': 220,
+            'min_mexallon': 56,
+            'min_isogen': 10
         }
     },
     
@@ -477,6 +582,12 @@ export const MODULE_DATA: Record<string, Module> = {
         },
         requirements: {
             skills: {}
+        },
+        reprocessingYield: {
+            'min_tritanium': 3200,
+            'min_pyerite': 800,
+            'min_mexallon': 200,
+            'min_isogen': 40
         }
     },
     'mod_200mm_plates_i': {
@@ -499,6 +610,11 @@ export const MODULE_DATA: Record<string, Module> = {
             skills: {
                 'hullUpgrades': 1
             }
+        },
+        reprocessingYield: {
+            'min_tritanium': 600,
+            'min_pyerite': 140,
+            'min_mexallon': 32
         }
     },
     'mod_armor_repairer_i': {
@@ -522,6 +638,12 @@ export const MODULE_DATA: Record<string, Module> = {
             skills: {
                 'repairSystems': 1
             }
+        },
+        reprocessingYield: {
+            'min_tritanium': 720,
+            'min_pyerite': 180,
+            'min_mexallon': 44,
+            'min_isogen': 4
         }
     },
     'mod_adaptive_plating_i': {
@@ -548,6 +670,13 @@ export const MODULE_DATA: Record<string, Module> = {
             skills: {
                 'hullUpgrades': 1
             }
+        },
+        reprocessingYield: {
+            'min_tritanium': 880,
+            'min_pyerite': 220,
+            'min_mexallon': 56,
+            'min_isogen': 12,
+            'min_nocxium': 2
         }
     },
     'mod_gyrostabilizer_i': {
@@ -570,6 +699,11 @@ export const MODULE_DATA: Record<string, Module> = {
             skills: {
                 'weaponUpgrades': 1
             }
+        },
+        reprocessingYield: {
+            'min_tritanium': 800,
+            'min_pyerite': 200,
+            'min_mexallon': 50
         }
     },
     'mod_magstab_i': {
@@ -592,6 +726,12 @@ export const MODULE_DATA: Record<string, Module> = {
             skills: {
                 'weaponUpgrades': 1
             }
+        },
+        reprocessingYield: {
+            'min_tritanium': 800,
+            'min_pyerite': 200,
+            'min_mexallon': 50,
+            'min_isogen': 4
         }
     },
     'mod_heat_sink_i': {
@@ -614,6 +754,12 @@ export const MODULE_DATA: Record<string, Module> = {
             skills: {
                 'weaponUpgrades': 1
             }
+        },
+        reprocessingYield: {
+            'min_tritanium': 800,
+            'min_pyerite': 200,
+            'min_mexallon': 50,
+            'min_nocxium': 2
         }
     },
     'mod_bcs_i': {
@@ -636,6 +782,12 @@ export const MODULE_DATA: Record<string, Module> = {
             skills: {
                 'weaponUpgrades': 1
             }
+        },
+        reprocessingYield: {
+            'min_tritanium': 840,
+            'min_pyerite': 208,
+            'min_mexallon': 52,
+            'min_isogen': 6
         }
     },
     'mod_pds_i': {
@@ -660,6 +812,12 @@ export const MODULE_DATA: Record<string, Module> = {
             skills: {
                 'engineering': 1
             }
+        },
+        reprocessingYield: {
+            'min_tritanium': 680,
+            'min_pyerite': 160,
+            'min_mexallon': 40,
+            'min_isogen': 4
         }
     },
     'mod_cap_relay_i': {
@@ -682,6 +840,11 @@ export const MODULE_DATA: Record<string, Module> = {
             skills: {
                 'energyGridUpgrades': 1
             }
+        },
+        reprocessingYield: {
+            'min_tritanium': 640,
+            'min_pyerite': 152,
+            'min_mexallon': 36
         }
     },
     'mod_mlu_i': {
@@ -704,6 +867,13 @@ export const MODULE_DATA: Record<string, Module> = {
             skills: {
                 'miningUpgrades': 1
             }
+        },
+        reprocessingYield: {
+            'min_tritanium': 1200,
+            'min_pyerite': 300,
+            'min_mexallon': 80,
+            'min_isogen': 8,
+            'min_nocxium': 2
         }
     },
     
@@ -728,6 +898,13 @@ export const MODULE_DATA: Record<string, Module> = {
             skills: {
                 'shieldRigging': 1
             }
+        },
+        reprocessingYield: {
+            'min_tritanium': 10000,
+            'min_pyerite': 2400,
+            'min_mexallon': 600,
+            'min_isogen': 120,
+            'min_nocxium': 30
         }
     },
     'mod_trimark_rig_i': {
@@ -749,6 +926,12 @@ export const MODULE_DATA: Record<string, Module> = {
             skills: {
                 'armorRigging': 1
             }
+        },
+        reprocessingYield: {
+            'min_tritanium': 11200,
+            'min_pyerite': 2800,
+            'min_mexallon': 720,
+            'min_isogen': 20
         }
     },
     'mod_aux_thrusters_rig_i': {
@@ -770,6 +953,12 @@ export const MODULE_DATA: Record<string, Module> = {
             skills: {
                 'astronauticsRigging': 1
             }
+        },
+        reprocessingYield: {
+            'min_tritanium': 8800,
+            'min_pyerite': 2200,
+            'min_mexallon': 560,
+            'min_isogen': 100
         }
     }
 };
@@ -787,6 +976,10 @@ const AMMUNITION_DATA: Record<string, Ammunition> = {
         damageType: {
             explosive: 0.9,
             kinetic: 0.1
+        },
+        reprocessingYield: {
+            'min_tritanium': 0.4,
+            'min_pyerite': 0.08
         }
     },
     'ammo_phased_plasma_s': {
@@ -801,6 +994,10 @@ const AMMUNITION_DATA: Record<string, Ammunition> = {
         damageType: {
             thermal: 0.8,
             kinetic: 0.2
+        },
+        reprocessingYield: {
+            'min_tritanium': 0.4,
+            'min_pyerite': 0.08
         }
     },
     'ammo_antimatter_s': {
@@ -815,6 +1012,11 @@ const AMMUNITION_DATA: Record<string, Ammunition> = {
         damageType: {
             kinetic: 0.5,
             thermal: 0.5
+        },
+        reprocessingYield: {
+            'min_tritanium': 0.6,
+            'min_pyerite': 0.12,
+            'min_mexallon': 0.02
         }
     },
     'ammo_iron_s': {
@@ -829,6 +1031,11 @@ const AMMUNITION_DATA: Record<string, Ammunition> = {
         damageType: {
             kinetic: 0.5,
             thermal: 0.5
+        },
+        reprocessingYield: {
+            'min_tritanium': 0.6,
+            'min_pyerite': 0.12,
+            'min_mexallon': 0.02
         }
     },
     'crystal_multifrequency_s': {
@@ -845,6 +1052,7 @@ const AMMUNITION_DATA: Record<string, Ammunition> = {
             thermal: 0.5
         },
         durability: 1000
+        // No reprocessing yield for crystals
     },
     'missile_scourge_rocket': {
         id: 'missile_scourge_rocket',
@@ -856,6 +1064,12 @@ const AMMUNITION_DATA: Record<string, Ammunition> = {
         damage: 25,
         damageType: {
             kinetic: 1.0
+        },
+        reprocessingYield: {
+            'min_tritanium': 0.48,
+            'min_pyerite': 0.1,
+            'min_mexallon': 0.032,
+            'min_isogen': 0.008
         }
     },
     'missile_inferno_light': {
@@ -868,6 +1082,12 @@ const AMMUNITION_DATA: Record<string, Ammunition> = {
         damage: 40,
         damageType: {
             thermal: 1.0
+        },
+        reprocessingYield: {
+            'min_tritanium': 0.48,
+            'min_pyerite': 0.1,
+            'min_mexallon': 0.032,
+            'min_isogen': 0.008
         }
     }
 };
@@ -888,6 +1108,13 @@ const DRONE_DATA: Record<string, Drone> = {
             orbitDistance: 1000,
             bandwidthUsage: 5,
         },
+        reprocessingYield: {
+            'min_tritanium': 800,
+            'min_pyerite': 200,
+            'min_mexallon': 48,
+            'min_isogen': 9,
+            'min_nocxium': 2
+        }
     },
     'drone_mining_s_i': {
         id: 'drone_mining_s_i',
@@ -906,6 +1133,13 @@ const DRONE_DATA: Record<string, Drone> = {
             orbitDistance: 1000,
             bandwidthUsage: 5,
         },
+        reprocessingYield: {
+            'min_tritanium': 960,
+            'min_pyerite': 240,
+            'min_mexallon': 40,
+            'min_isogen': 12,
+            'min_nocxium': 2
+        }
     },
 };
 
