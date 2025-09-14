@@ -187,6 +187,9 @@ The current foundation is robust, paving the way for even deeper and more emerge
 
 *   **Phase 1: Deepening the Simulation**
     *   [ ] **Comprehensive Combat Mechanics:** Implementing a full damage model (Shield/Armor/Hull), weapon effects (tracking, range, damage types), and e-war modules.
+    *   [ ] <div align="center">
+<img width="400" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/e8439e79ba64e27606204a60d171ff199663ff5b/Pictures/MonkiesVsPirates.png" />
+</div>
     *   [ ] **Player Skill System:** Adding a character skill tree that allows players to specialize in piloting, industry, combat, and more, providing long-term progression.
     *   [ ] **Loot & Salvaging:** Expanding NPC loot tables to include modules and rare items. Introducing salvaging gameplay to recover components from wrecks.
     *   [ ] **Visual Polish:** Adding 3D models for all ships, drones, and structures to replace the current placeholder geometry.
@@ -205,3 +208,23 @@ The current foundation is robust, paving the way for even deeper and more emerge
 <img width="1200" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/main/Pictures/WeWantYou9.png" />
 <img width="1200" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/main/Pictures/ChimpInZoo.gif" />
 </div>
+
+### Monkies vs Pirates
+<div align="center">
+<img width="1200" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/e8439e79ba64e27606204a60d171ff199663ff5b/Pictures/MonkiesVsPirates.png" />
+</div>
+
+**[Live Demo - Play Now!](https://peterbabulik.github.io/GalExpl3D/)**
+
+*   **Tactical PvE Combat:**
+    *   Engage in tactical fleet battles against diverse fleets of **NPC pirates**.
+    *   Earn **ISK bounties** for every enemy ship you destroy.
+    *   Destroyed pirates leave behind **wrecks** containing valuable loot, including modules and materials.
+    *   Command your fleet of **combat drones**, ordering them to engage your target and secure your victory.
+
+*   **Advanced Drone Fleet Command:**
+    *   Fit your ship with a **Drone Bay** and load it with a full complement of specialized drones.
+    *   **Combat Drones:** Launch and command a large wing of drones to hunt down and destroy hostile fleets.
+    *   **Mining Drones:** Deploy drones to automatically strip asteroids of valuable ore.
+    *   Manage your active drones with a clean, intuitive in-space HUD.
+
