@@ -398,7 +398,19 @@ export default function App() {
                 for (const mat in bpData.materials) {
                     newStationHangar.materials[mat] -= bpData.materials[mat];
                 }
-                for(let i=0; i<bpData.outputQuantity; i++) newStationHangar.items.push(bpData.outputItem);
+                
+                const outputItemData = getItemData(bpData.outputItem);
+                const stackableCategories: string[] = ['Ammunition', 'Ore', 'Mineral', 'Component', 'Consumable', 'Material'];
+
+                if (outputItemData && stackableCategories.includes(outputItemData.category)) {
+                    // Add to materials (stackable)
+                    newStationHangar.materials[bpData.outputItem] = (newStationHangar.materials[bpData.outputItem] || 0) + bpData.outputQuantity;
+                } else {
+                    // Add to items (non-stackable)
+                    for (let i = 0; i < bpData.outputQuantity; i++) {
+                        newStationHangar.items.push(bpData.outputItem);
+                    }
+                }
                 
                 newState.stationHangars[stationId] = newStationHangar;
             }
@@ -1513,7 +1525,15 @@ export default function App() {
         const onMouseMove = (event: MouseEvent) => {
             mousePosRef.current.x = (event.clientX / window.innerWidth) * 2 - 1;
             mousePosRef.current.y = -(event.clientY / window.innerHeight) * 2 + 1;
-            setTooltipData(d => ({ ...d, x: event.clientX, y: event.clientY }));
+
+            const isModalOpen = (mount.parentElement as HTMLElement)?.dataset.modalopen === 'true';
+
+            // Only update tooltip position if no modal is open. This prevents re-renders
+            // that were resetting scroll positions in modals.
+            if (!isModalOpen) {
+                setTooltipData(d => ({ ...d, x: event.clientX, y: event.clientY }));
+            }
+
             if(gameData.isMouseLooking && three.player && !isWarping() && !gameData.lookAtTarget) {
                 const deltaX = event.clientX - prevMousePosRef.current.x;
                 const deltaY = event.clientY - prevMousePosRef.current.y;
