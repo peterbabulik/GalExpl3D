@@ -211,7 +211,7 @@ The current foundation is robust, paving the way for even deeper and more emerge
 
 ### Monkies vs Pirates
 <div align="center">
-<img width="1200" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/e8439e79ba64e27606204a60d171ff199663ff5b/Pictures/MonkiesVsPirates.png" />
+<img width="1200" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/e8439e79ba64e27606204a60d171ff199663ff5b/Pictures/MonkiesVsPirates2.png" />
 </div>
 
 **[Live Demo - Play Now!](https://peterbabulik.github.io/GalExpl3D/)**
