@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
 import { GameState } from './types';
@@ -184,6 +183,9 @@ export default function App() {
     const joystickVecRef = useRef(joystickVector);
     const droneMiningTimerRef = useRef<number>(0);
     const lastEnemyAttackTimeRef = useRef<number>(0);
+    const moduleCycleTimersRef = useRef<Record<string, number>>({});
+    // FIX: Add ref for activeModuleSlots to be used in setInterval to access latest state.
+    const activeModuleSlotsRef = useRef(activeModuleSlots);
     
     // Refs for autosave interval
     const gameStateRef = useRef(gameState);
@@ -201,6 +203,8 @@ export default function App() {
     useEffect(() => { playerStateRef.current = playerState; }, [playerState]);
     useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
     useEffect(() => { activeSystemIdRef.current = activeSystemId; }, [activeSystemId]);
+    // FIX: Update activeModuleSlotsRef when activeModuleSlots state changes.
+    useEffect(() => { activeModuleSlotsRef.current = activeModuleSlots; }, [activeModuleSlots]);
 
     // --- PERSISTENCE LOGIC ---
     const SAVE_KEY = 'GALEXPL3D_SAVEGAME';
@@ -1819,6 +1823,67 @@ export default function App() {
     useEffect(() => {
         joystickVecRef.current = joystickVector;
     }, [joystickVector]);
+
+    // Effect for active module cycles (repairers, boosters)
+    useEffect(() => {
+        const cycleInterval = setInterval(() => {
+            const pState = playerStateRef.current;
+            // FIX: Use activeModuleSlotsRef to access the latest state of active modules.
+            if (gameStateRef.current !== GameState.SOLAR_SYSTEM || activeModuleSlotsRef.current.length === 0) {
+                return;
+            }
+    
+            const now = Date.now();
+            let updatedHP: PlayerState['shipHP'] | null = null;
+    
+            // FIX: Use activeModuleSlotsRef to access the latest state of active modules.
+            activeModuleSlotsRef.current.forEach(slotKey => {
+                const [slotType, slotIndexStr] = slotKey.split('-');
+                const slotIndex = parseInt(slotIndexStr, 10);
+                
+                const fittingSlots = pState.currentShipFitting[slotType as keyof typeof pState.currentShipFitting];
+                if (!fittingSlots) return;
+    
+                const moduleId = fittingSlots[slotIndex];
+                if (!moduleId) return;
+    
+                const moduleData = getItemData(moduleId) as Module;
+                if (!moduleData?.attributes?.cycleTime) return;
+                
+                const lastCycleTime = moduleCycleTimersRef.current[slotKey] || 0;
+                const cycleDuration = moduleData.attributes.cycleTime * 1000;
+    
+                if (now - lastCycleTime >= cycleDuration) {
+                    moduleCycleTimersRef.current[slotKey] = now;
+                    
+                    const { shieldBoostAmount, armorRepairAmount } = moduleData.attributes;
+    
+                    if (shieldBoostAmount || armorRepairAmount) {
+                         if (!updatedHP) {
+                            updatedHP = { ...pState.shipHP };
+                        }
+                    }
+                   
+                    if (shieldBoostAmount && updatedHP && updatedHP.shield < updatedHP.maxShield) {
+                        updatedHP.shield = Math.min(updatedHP.maxShield, updatedHP.shield + shieldBoostAmount);
+                    }
+                    
+                    if (armorRepairAmount && updatedHP && updatedHP.armor < updatedHP.maxArmor) {
+                        updatedHP.armor = Math.min(updatedHP.maxArmor, updatedHP.armor + armorRepairAmount);
+                    }
+                }
+            });
+            
+            if (updatedHP) {
+                setPlayerState(p => ({ ...p, shipHP: updatedHP as PlayerState['shipHP'] }));
+            }
+    
+        }, 250); // Check every quarter second
+    
+        return () => {
+            clearInterval(cycleInterval);
+        };
+    }, []); // Run only once on mount
 
     const isTouchDevice = 'ontouchstart' in window;
     const currentShip = SHIP_DATA[playerState.currentShipId];
