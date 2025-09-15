@@ -87,6 +87,7 @@ export interface StorageLocation {
 export interface PlayerState {
     playerName: string;
     isk: number;
+    homeStationId: string;
     currentShipId: string;
     shipHP: {
         shield: number;

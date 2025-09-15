@@ -271,6 +271,7 @@ const initialHP = {
 export const INITIAL_PLAYER_STATE: PlayerState = {
     playerName: '',
     isk: 10000000000,
+    homeStationId: 'station_1_Titan_Station',
     currentShipId: initialPlayerShipId,
     shipHP: initialHP,
     currentShipFitting: {

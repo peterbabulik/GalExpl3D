@@ -1221,7 +1221,9 @@ export const StationInterface: React.FC<{
     onOpenAgent: () => void;
     showHelp: boolean;
     onToggleHelp: () => void;
-}> = ({ stationName, onUndock, onOpenCrafting, onOpenShipHangar, onOpenItemHangar, onOpenFitting, onOpenReprocessing, onOpenMarket, onOpenAgent, showHelp, onToggleHelp }) => {
+    onSetHomeStation: () => void;
+    isHomeStation: boolean;
+}> = ({ stationName, onUndock, onOpenCrafting, onOpenShipHangar, onOpenItemHangar, onOpenFitting, onOpenReprocessing, onOpenMarket, onOpenAgent, showHelp, onToggleHelp, onSetHomeStation, isHomeStation }) => {
     return (
         <div className="absolute inset-0 bg-gray-900/95 z-[200] p-12 box-border flex flex-col items-center justify-center">
             {showHelp && <StationHelpOverlay onClose={onToggleHelp} />}
@@ -1243,6 +1245,9 @@ export const StationInterface: React.FC<{
                 <UIButton onClick={onOpenCrafting} className="w-64 !text-base">Crafting</UIButton>
                 <UIButton onClick={onOpenReprocessing} className="w-64 !text-base">Reprocessing</UIButton>
                 <UIButton onClick={onOpenMarket} className="w-64 !text-base">Market</UIButton>
+                <UIButton onClick={onSetHomeStation} disabled={isHomeStation} className="w-64 !text-base">
+                    {isHomeStation ? 'Current Home Station' : 'Set as Home Station'}
+                </UIButton>
                 <UIButton onClick={onOpenAgent} className="w-64 !text-base">Agent Missions</UIButton>
             </div>
         </div>
@@ -1875,22 +1880,4 @@ export const AgentInterface: React.FC<{
                                     ))}
                                 </div>
                                 <div>
-                                    <h5 className="text-lg font-semibold text-green-400">Reward:</h5>
-                                    {missionToShow.rewards.isk && <p className="m-0">{missionToShow.rewards.isk.toLocaleString()} ISK</p>}
-                                    {missionToShow.rewards.items?.map(item => (
-                                        <div key={item.id} className="flex items-center gap-2">
-                                            <ItemIcon item={getItemData(item.id)} size="small" />
-                                            <span className="m-0">{item.quantity}x {getItemData(item.id)?.name}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                             {missionToShow.status === 'offered' && <UIButton onClick={handleAccept} className="w-full !text-lg !py-3">Accept Mission</UIButton>}
-                             {missionToShow.status === 'accepted' && <UIButton onClick={handleComplete} disabled={!canComplete} className="w-full !text-lg !py-3">Complete Mission</UIButton>}
-                        </div>
-                    )}
-                </div>
-             </div>
-        </div>
-    );
-};
+                                    <h5 className="text-lg font-semibold text-green-4

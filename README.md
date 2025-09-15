@@ -238,3 +238,13 @@ The current foundation is robust, paving the way for even deeper and more emerge
     *   Small Armor Repairer I
     *   Small Shield Booster I
   
+### First ship destroyed 
+<div align="center">
+<img width="1200" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/e2c8ef69ad9a2ea082dce02fa1d4349172cb9b12/Pictures/Shiel%20Armor%20Tanking.png" />
+</div>
+
+*   **High-Stakes PvE Combat:**
+    *   Engage in tactical fleet battles against diverse fleets of **NPC pirates**.
+    *   **Ship Destruction & Respawning:** If your ship's hull is breached, it is permanently destroyed. You will be respawning at your designated home station.
+  
+ 

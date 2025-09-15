@@ -143,6 +143,7 @@ export default function App() {
     const [deactivatedWeaponSlots, setDeactivatedWeaponSlots] = useState<string[]>([]);
     const [droneStatus, setDroneStatus] = useState<DroneStatus>('docked');
     const [isTakingDamage, setIsTakingDamage] = useState(false);
+    const [showDeathScreen, setShowDeathScreen] = useState(false);
 
     // Persistence State
     const [isLoading, setIsLoading] = useState(true);
@@ -195,6 +196,8 @@ export default function App() {
     const loadedPositionRef = useRef<THREE.Vector3 | null>(null);
     const loadedQuaternionRef = useRef<THREE.Quaternion | null>(null);
     const initialDockedStationNameRef = useRef<string | null>(null);
+    const isRespawningRef = useRef(false);
+    const isDyingRef = useRef(false);
 
     // Update refs whenever state changes for the interval to access
     useEffect(() => {
@@ -225,6 +228,10 @@ export default function App() {
                             armor: ship.attributes.armor, maxArmor: ship.attributes.armor,
                             hull: ship.attributes.hull, maxHull: ship.attributes.hull,
                         };
+                    }
+
+                    if (!parsedData.playerState.homeStationId) {
+                        parsedData.playerState.homeStationId = 'station_1_Titan_Station';
                     }
                     
                     setPlayerState(p => ({...p, ...parsedData.playerState}));
@@ -852,6 +859,80 @@ export default function App() {
 
     }, [targetData.selectedTarget, handleDeselectTarget]);
 
+    const handlePlayerDeath = useCallback(() => {
+        setShowDeathScreen(true);
+        handleStopMining();
+    
+        setTimeout(() => {
+            const homeStationId = playerStateRef.current.homeStationId;
+            if (!homeStationId) {
+                console.error("No home station set! Cannot respawn.");
+                setShowDeathScreen(false); // Hide screen if we can't proceed
+                return;
+            }
+    
+            // 1. Reset player state for respawn in a new rookie ship.
+            setPlayerState(p => {
+                const newState = JSON.parse(JSON.stringify(p));
+                const rookieShipData = SHIP_DATA['ship_rookie'];
+    
+                newState.currentShipId = 'ship_rookie';
+                newState.currentShipFitting = {
+                    high: Array(rookieShipData.slots.high).fill(null),
+                    medium: Array(rookieShipData.slots.medium).fill(null),
+                    low: Array(rookieShipData.slots.low).fill(null),
+                    rig: Array(rookieShipData.slots.rig).fill(null),
+                };
+                newState.shipHP = {
+                    shield: rookieShipData.attributes.shield, maxShield: rookieShipData.attributes.shield,
+                    armor: rookieShipData.attributes.armor, maxArmor: rookieShipData.attributes.armor,
+                    hull: rookieShipData.attributes.hull, maxHull: rookieShipData.attributes.hull,
+                };
+                newState.shipCargo = { items: [], materials: {} };
+                newState.droneBayCargo = [];
+    
+                return newState;
+            });
+    
+            isRespawningRef.current = true;
+            isDyingRef.current = false; // Reset dying flag
+    
+            fadeTransition(() => {
+                setShowDeathScreen(false);
+                const homeSystemId = parseInt(homeStationId.split('_')[1], 10);
+                setActiveSystemId(homeSystemId);
+                setGameState(GameState.SOLAR_SYSTEM); // This triggers the scene rebuild
+            });
+    
+        }, 4000); // 4-second delay for the death screen
+    }, [fadeTransition, handleStopMining]);
+
+    // This effect watches for the player's death condition (hull <= 0).
+    useEffect(() => {
+        if (playerState.shipHP.hull <= 0 && gameState === GameState.SOLAR_SYSTEM && !isDyingRef.current) {
+            isDyingRef.current = true; // Set flag to prevent re-triggering
+            handlePlayerDeath();
+        }
+    }, [playerState.shipHP.hull, gameState, handlePlayerDeath]);
+
+    // This effect handles the final step of respawning: docking the player once the new system has loaded.
+    useEffect(() => {
+        if (isRespawningRef.current && gameState === GameState.SOLAR_SYSTEM && activeSystemId !== null) {
+            // A small delay to ensure the scene objects have been populated by the main scene-building useEffect.
+            setTimeout(() => {
+                const homeStationId = playerStateRef.current.homeStationId;
+                const homeStationName = homeStationId.split('_').slice(2).join(' ');
+                const stationObject = gameDataRef.current.stations.find(s => s.userData.name === homeStationName);
+                
+                if (stationObject) {
+                    dockAtStation(stationObject);
+                } else {
+                    console.error("Respawn failed: Home station not found in the loaded system.");
+                }
+                isRespawningRef.current = false; // Reset the flag
+            }, 100);
+        }
+    }, [gameState, activeSystemId, dockAtStation]);
 
     const handleTakeDamage = useCallback((damage: number) => {
         setIsTakingDamage(true);
@@ -876,8 +957,7 @@ export default function App() {
             }
             
             if (newHP.hull <= 0) {
-                console.error("PLAYER SHIP DESTROYED!");
-                // TODO: Handle player destruction
+                newHP.hull = 0;
             }
 
             return { ...p, shipHP: newHP };
@@ -1156,6 +1236,15 @@ export default function App() {
             setGameState(GameState.SOLAR_SYSTEM);
         });
     };
+
+    const handleSetHomeStation = useCallback(() => {
+        if (gameState !== GameState.DOCKED || !activeSystemId || !gameDataRef.current.dockedStation) return;
+        const currentStationId = getStationId(activeSystemId, gameDataRef.current.dockedStation.userData.name);
+        setPlayerState(p => ({
+            ...p,
+            homeStationId: currentStationId
+        }));
+    }, [gameState, activeSystemId]);
 
     // --- MAIN GAME LOGIC (SOLAR SYSTEM) IN USEEFFECT ---
     useEffect(() => {
@@ -1941,6 +2030,14 @@ export default function App() {
                     isTakingDamage ? 'shadow-[inset_0_0_100px_30px_rgba(255,0,0,0.5)]' : ''
                 }`}
             />
+            {showDeathScreen && (
+                <div className="fixed inset-0 bg-black/90 z-[300] flex items-center justify-center text-center">
+                    <div>
+                        <h1 className="text-6xl text-red-500 animate-pulse">SHIP DESTROYED</h1>
+                        <p className="text-xl text-gray-300 mt-4">Respawning at your home station...</p>
+                    </div>
+                </div>
+            )}
             {gameState === GameState.GALAX_MAP ? (
                 <GalaxyMap onSystemSelect={handleSystemSelect} />
             ) : (
@@ -2063,6 +2160,8 @@ export default function App() {
                             onOpenAgent={() => { setAgentInterfaceOpen(true); setShowStationHelp(false); }}
                             showHelp={showStationHelp}
                             onToggleHelp={() => setShowStationHelp(prev => !prev)}
+                            onSetHomeStation={handleSetHomeStation}
+                            isHomeStation={stationId === playerState.homeStationId}
                         />
                     )}
 
