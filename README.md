@@ -205,6 +205,8 @@ The current foundation is robust, paving the way for even deeper and more emerge
 <img width="1200" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/main/Pictures/ChimpInZoo.gif" />
 </div>
 
+## Whats new:
+
 ### Monkies vs Pirates
 
 <div align="center">
