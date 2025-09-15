@@ -186,10 +186,6 @@ GalExpl3D is an actively developed project that has evolved from a simple 3D fli
 The current foundation is robust, paving the way for even deeper and more emergent gameplay. The next major phases of development are focused on creating a truly dynamic, shared universe.
 
 *   **Phase 1: Deepening the Simulation**
-    *   [ ] **Comprehensive Combat Mechanics:** Implementing a full damage model (Shield/Armor/Hull), weapon effects (tracking, range, damage types), and e-war modules.
-    *   [ ] <div align="center">
-<img width="400" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/e8439e79ba64e27606204a60d171ff199663ff5b/Pictures/MonkiesVsPirates.png" />
-</div>
     *   [ ] **Player Skill System:** Adding a character skill tree that allows players to specialize in piloting, industry, combat, and more, providing long-term progression.
     *   [ ] **Loot & Salvaging:** Expanding NPC loot tables to include modules and rare items. Introducing salvaging gameplay to recover components from wrecks.
     *   [ ] **Visual Polish:** Adding 3D models for all ships, drones, and structures to replace the current placeholder geometry.
