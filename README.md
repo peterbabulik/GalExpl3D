@@ -208,7 +208,7 @@ The current foundation is robust, paving the way for even deeper and more emerge
 <img width="1200" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/main/Pictures/WeWantYou9.png" />
 <img width="1200" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/main/Pictures/ChimpInZoo.gif" />
 </div>
-
+---
 ### Monkies vs Pirates
 <div align="center">
 <img width="1200" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/ee256151fe73f508b8f6cb8a86a842858156adc3/Pictures/MonkiesVsPirates2.png" />
@@ -228,3 +228,12 @@ The current foundation is robust, paving the way for even deeper and more emerge
     *   **Mining Drones:** Deploy drones to automatically strip asteroids of valuable ore.
     *   Manage your active drones with a clean, intuitive in-space HUD.
 
+### Shield/Armor tanking
+<div align="center">
+<img width="1200" alt="GHBanner" src="[https://github.com/peterbabulik/GalExpl3D/blob/e2c8ef69ad9a2ea082dce02fa1d4349172cb9b12/Pictures/Shiel%20Armor%20Tanking.png" />
+</div>
+
+*   **Shield and Armor repairers:**
+    *   Small Armor Repairer I
+    *   Small Shield Booster I
+  
