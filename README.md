@@ -240,7 +240,7 @@ The current foundation is robust, paving the way for even deeper and more emerge
   
 ### First ship destroyed 
 <div align="center">
-<img width="1200" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/e2c8ef69ad9a2ea082dce02fa1d4349172cb9b12/Pictures/Shiel%20Armor%20Tanking.png" />
+<img width="1200" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/c555be3672cc6d0e19ebcc129e521a806795c2c3/Pictures/FirstBlood.png" />
 </div>
 
 *   **High-Stakes PvE Combat:**
