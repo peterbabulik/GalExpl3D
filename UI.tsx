@@ -1788,8 +1788,8 @@ export const AgentInterface: React.FC<{
                         description: m.description,
                         objectives: oreId ? { [oreId]: m.objectiveQuantity } : {},
                         rewards: {
-                            isk: m.reward.isk,
-                            items: m.reward.itemId ? [{ id: m.reward.itemId, quantity: m.reward.itemQuantity || 1 }] : undefined
+                            isk: m.reward?.isk,
+                            items: m.reward?.itemId ? [{ id: m.reward.itemId, quantity: m.reward.itemQuantity || 1 }] : undefined
                         },
                         status: 'offered'
                     };
@@ -1880,4 +1880,26 @@ export const AgentInterface: React.FC<{
                                     ))}
                                 </div>
                                 <div>
-                                    <h5 className="text-lg font-semibold text-green-4
+                                    <h5 className="text-lg font-semibold text-green-400">Reward:</h5>
+                                    {missionToShow.rewards.isk && <p className="m-0">{missionToShow.rewards.isk.toLocaleString()} ISK</p>}
+                                    {missionToShow.rewards.items?.map((itemReward, i) => (
+                                        <div key={i} className="flex items-center gap-2">
+                                            <ItemIcon item={getItemData(itemReward.id)} size="small" />
+                                            <span className="m-0">{getItemData(itemReward.id)?.name} x {itemReward.quantity}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            {missionToShow.status === 'offered' && !activeMissionForThisAgent && (
+                                <UIButton onClick={handleAccept} className="w-full !text-lg !py-3">Accept Mission</UIButton>
+                            )}
+                             {missionToShow.status === 'accepted' && (
+                                <UIButton onClick={handleComplete} disabled={!canComplete} className="w-full !text-lg !py-3">Complete Mission</UIButton>
+                            )}
+                        </div>
+                    )}
+                </div>
+             </div>
+        </div>
+    );
+};
