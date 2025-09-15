@@ -251,11 +251,7 @@ The current foundation is robust, paving the way for even deeper and more emerge
 <img width="1200" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/2aee28e697a6268b028c318a2ffb4ef128a3a10d/Pictures/Skills.png" />
 </div>
 
-*   **"Learn by Doing" Skill System:**
-    *   Advance your character's skills by performing related actions in the game—no time gates. The more you mine, the better you get at mining.
-    *   Track your progress with a clean, intuitive **Skills UI**, showing your current XP, level, and the powerful passive bonuses each skill provides.
-    *   Specialize your character to become a master industrialist, a combat veteran, or anything in between.
-
- 
- 
- 
+*   **Deep "Learn by Doing" Skill System:**
+    *   **Forge Your Own Path:** Your skills advance by performing related actions in the game—no time gates. The more you fight, the better you get at combat; the more you build, the more efficient your manufacturing becomes.
+    *   **Meaningful Specialization:** Progress through a deep skill system covering Industry, Mining, Combat, Reprocessing, and more. Your choices create a truly unique pilot that reflects your personal playstyle.
+    *   **Track Your Mastery:** Monitor your progression with a clean, intuitive Skills UI, showing your current XP, level, and the powerful passive bonuses each skill provides.
