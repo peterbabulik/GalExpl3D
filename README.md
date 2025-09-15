@@ -205,7 +205,7 @@ The current foundation is robust, paving the way for even deeper and more emerge
 <img width="1200" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/main/Pictures/ChimpInZoo.gif" />
 </div>
 
-## Whats new:
+## Whats new: **[Live Demo - Play Now!](https://peterbabulik.github.io/GalExpl3D/)**
 
 ### Monkies vs Pirates
 
@@ -213,7 +213,7 @@ The current foundation is robust, paving the way for even deeper and more emerge
 <img width="1200" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/ee256151fe73f508b8f6cb8a86a842858156adc3/Pictures/MonkiesVsPirates2.png" />
 </div>
 
-**[Live Demo - Play Now!](https://peterbabulik.github.io/GalExpl3D/)**
+
 
 *   **Tactical PvE Combat:**
     *   Engage in tactical fleet battles against diverse fleets of **NPC pirates**.
