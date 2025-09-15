@@ -305,6 +305,7 @@ export const INITIAL_PLAYER_STATE: PlayerState = {
             materials: {}
         }
     },
+    skills: {},
     activeMissions: [],
 };
 

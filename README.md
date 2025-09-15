@@ -242,5 +242,18 @@ The current foundation is robust, paving the way for even deeper and more emerge
 *   **High-Stakes PvE Combat:**
     *   Engage in tactical fleet battles against diverse fleets of **NPC pirates**.
     *   **Ship Destruction & Respawning:** If your ship's hull is breached, it is permanently destroyed. You will be respawning at your designated home station.
-  
+
+
+### Now with skills! 
+<div align="center">
+<img width="1200" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/2aee28e697a6268b028c318a2ffb4ef128a3a10d/Pictures/Skills.png" />
+</div>
+
+*   **"Learn by Doing" Skill System:**
+    *   Advance your character's skills by performing related actions in the game—no time gates. The more you mine, the better you get at mining.
+    *   Track your progress with a clean, intuitive **Skills UI**, showing your current XP, level, and the powerful passive bonuses each skill provides.
+    *   Specialize your character to become a master industrialist, a combat veteran, or anything in between.
+
+ 
+ 
  

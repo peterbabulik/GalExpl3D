@@ -70,6 +70,27 @@ export interface NavPanelItem {
 }
 
 
+// --- SKILLS ---
+
+export interface SkillEffect {
+    type: string; // e.g., 'miningYieldBonus', 'reprocessingEfficiencyBonus', 'weaponDamageBonus'
+    value: number; // e.g., 0.05 for a 5% bonus
+}
+
+export interface Skill {
+    id: string;
+    name: string;
+    description: string;
+    rank: number;
+    effects: SkillEffect[];
+}
+
+export interface PlayerSkill {
+    level: number;
+    xp: number;
+}
+
+
 // --- PLAYER & INVENTORY ---
 
 export interface ShipFitting {
@@ -102,6 +123,7 @@ export interface PlayerState {
     droneBayCargo: string[];
     assetHangar: StorageLocation;
     stationHangars: Record<string, StorageLocation>;
+    skills: Record<string, PlayerSkill>;
     activeMissions: MissionData[];
 }
 

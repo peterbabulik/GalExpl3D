@@ -1,4 +1,10 @@
 
+
+
+
+
+
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
 import { GameState } from './types';
@@ -15,6 +21,11 @@ import {
     Tooltip,
     TargetingReticle,
     DockingIndicator,
+    SystemInfoUI,
+    MiningProgressIndicator,
+    VirtualJoystick,
+} from './UI';
+import {
     HangarModal,
     ItemHangarModal,
     CraftingInterface,
@@ -22,17 +33,18 @@ import {
     ReprocessingInterface,
     MarketInterface,
     StationInterface,
+} from './StationModals';
+import {
     NavPanel,
     ShipStatsUI,
     SelectedTargetUI,
-    UIButton,
-    MiningProgressIndicator,
-    SystemInfoUI,
-    AgentInterface,
     MissionTrackerUI,
-    VirtualJoystick,
-    ModuleBarUI
-} from './UI';
+    ModuleBarUI,
+} from './InFlightUI';
+import { AgentInterface } from './GeminiAgent';
+// FIX: Import SkillsUI component to render the skills modal.
+import { SkillsUI } from './SkillsUI';
+
 import { ASTEROID_BELT_TYPES } from './ores';
 import { createAsteroidBelt } from './asteroids';
 import { startWarp, updateWarp, isWarping } from './warp';
@@ -40,6 +52,7 @@ import { startMiningAnimation, updateMiningAnimation, stopMiningAnimation } from
 import { GalaxyMap } from './GalaxyMap';
 import { spawnEnemies, updateEnemies, createEnemyLoot, updateEnemyAttacks } from './enemies';
 import type { Enemy } from './enemies';
+import { addSkillXp } from './skills';
 
 
 // --- CONSTANTS ---
@@ -127,6 +140,8 @@ export default function App() {
     const [isReprocessingOpen, setReprocessingOpen] = useState(false);
     const [isMarketOpen, setMarketOpen] = useState(false);
     const [isAgentInterfaceOpen, setAgentInterfaceOpen] = useState(false);
+    // FIX: Add state to manage the visibility of the skills UI modal.
+    const [isSkillsOpen, setSkillsOpen] = useState(false);
     const [isWarpingState, setIsWarpingState] = useState(false);
     const [miningState, setMiningState] = useState<MiningState | null>(null);
     const [isAutoMining, setIsAutoMining] = useState(false);
@@ -464,6 +479,10 @@ export default function App() {
                 }
                 
                 newState.stationHangars[stationId] = newStationHangar;
+                
+                // Grant skill XP for crafting
+                const xpGained = Math.ceil(bpData.manufacturingTime / 10);
+                return addSkillXp(newState, 'skill_crafting', xpGained);
             }
             return newState;
         });
@@ -705,7 +724,9 @@ export default function App() {
                      gameDataRef.current.navObjects = gameDataRef.current.navObjects.filter(n => n.object3D.uuid !== targetObject.uuid);
                      handleDeselectTarget();
                 }
-                return newState;
+                // Grant skill XP for mining
+                const xpGained = 150; // Flat XP per cycle
+                return addSkillXp(newState, 'skill_mining', xpGained);
             });
             setMiningState(null);
         }, cycleTime);
@@ -975,8 +996,36 @@ export default function App() {
             const enemy = gameDataRef.current.enemies[enemyIndex];
             const lastPosition = enemy.object3D.position.clone();
             
-            // 1. Add bounty
-            setPlayerState(p => ({ ...p, isk: p.isk + enemy.bounty }));
+            // 1. Add bounty and skill XP
+            setPlayerState(p => {
+                const bounty = enemy.bounty;
+                let finalState = { ...p, isk: p.isk + bounty };
+        
+                const xpFromBounty = Math.ceil(bounty / 50);
+        
+                const skillsToTrain = new Set<string>();
+                const fittedHighSlots = p.currentShipFitting.high.filter((id): id is string => !!id);
+                fittedHighSlots.forEach(moduleId => {
+                    const module = getItemData(moduleId) as Module;
+                    if (module) {
+                        switch (module.subcategory) {
+                            case 'projectile': skillsToTrain.add('skill_small_projectiles'); break;
+                            case 'energy': skillsToTrain.add('skill_small_lasers'); break;
+                            case 'hybrid': skillsToTrain.add('skill_small_hybrids'); break;
+                            case 'missile': skillsToTrain.add('skill_missiles'); break;
+                        }
+                    }
+                });
+                if (droneStatus === 'attacking') {
+                    skillsToTrain.add('skill_drone_combat');
+                }
+        
+                skillsToTrain.forEach(skillId => {
+                    finalState = addSkillXp(finalState, skillId, xpFromBounty);
+                });
+                
+                return finalState;
+            });
 
             // 2. Create loot wreck
             const wreck = createEnemyLoot(threeRef.current.scene, enemy, lastPosition);
@@ -992,7 +1041,7 @@ export default function App() {
 
             handleDeselectTarget();
         }
-    }, [targetData.selectedTarget, handleDeselectTarget]);
+    }, [targetData.selectedTarget, handleDeselectTarget, droneStatus]);
 
 
      // --- DRONE LOGIC ---
@@ -1578,7 +1627,9 @@ export default function App() {
                                 handleDeselectTarget();
                             }
                             
-                            return newState;
+                            // Grant XP for drone mining
+                            const xpGained = 50; // Per drone cycle
+                            return addSkillXp(newState, 'skill_drone_mining', xpGained);
                         });
                     }
                 }
@@ -1976,7 +2027,7 @@ export default function App() {
 
     const isTouchDevice = 'ontouchstart' in window;
     const currentShip = SHIP_DATA[playerState.currentShipId];
-    const isModalOpen = isShipHangarOpen || isItemHangarOpen || isCraftingOpen || isFittingOpen || isReprocessingOpen || isMarketOpen || isAgentInterfaceOpen;
+    const isModalOpen = isShipHangarOpen || isItemHangarOpen || isCraftingOpen || isFittingOpen || isReprocessingOpen || isMarketOpen || isAgentInterfaceOpen || isSkillsOpen;
 
     const stationId = (gameState === GameState.DOCKED && activeSystemId && gameDataRef.current.dockedStation)
         ? getStationId(activeSystemId, gameDataRef.current.dockedStation.userData.name)
@@ -2051,6 +2102,8 @@ export default function App() {
                         playerState={playerState}
                         onNavClick={switchToGalaxyMap}
                         isDocked={gameState === GameState.DOCKED}
+                        // FIX: Pass the onOpenSkills handler to open the skills UI modal.
+                        onOpenSkills={() => setSkillsOpen(true)}
                     />
                     
                     {gameState === GameState.SOLAR_SYSTEM && (
@@ -2096,6 +2149,7 @@ export default function App() {
                             onSlotClick={handleSlotClick}
                             activeModuleSlots={activeModuleSlots}
                             deactivatedWeaponSlots={deactivatedWeaponSlots}
+                            // FIX: Corrected prop value from undefined 'onToggleModuleGroup' to the defined handler 'handleToggleModuleGroup'.
                             onToggleModuleGroup={handleToggleModuleGroup}
                             setTooltip={setTooltipContent}
                             clearTooltip={clearTooltipContent}
@@ -2158,6 +2212,8 @@ export default function App() {
                             onOpenReprocessing={() => { setReprocessingOpen(true); setShowStationHelp(false); }}
                             onOpenMarket={() => { setMarketOpen(true); setShowStationHelp(false); }}
                             onOpenAgent={() => { setAgentInterfaceOpen(true); setShowStationHelp(false); }}
+                            // FIX: Pass the onOpenSkills handler to open the skills UI modal.
+                            onOpenSkills={() => { setSkillsOpen(true); setShowStationHelp(false); }}
                             showHelp={showStationHelp}
                             onToggleHelp={() => setShowStationHelp(prev => !prev)}
                             onSetHomeStation={handleSetHomeStation}
@@ -2216,6 +2272,14 @@ export default function App() {
                             setCachedAgent={(agent) => setAgents(a => ({...a, [stationId]: agent}))}
                             cachedMissions={stationMissions[stationId]}
                             setCachedMissions={(missions) => setStationMissions(m => ({...m, [stationId]: missions}))}
+                        />
+                    )}
+                    
+                    {isSkillsOpen && (
+                        <SkillsUI
+                            isOpen={isSkillsOpen}
+                            onClose={() => setSkillsOpen(false)}
+                            playerState={playerState}
                         />
                     )}
                 </>
