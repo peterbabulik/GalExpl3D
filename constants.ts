@@ -254,7 +254,7 @@ export const SOLAR_SYSTEM_DATA: Record<number, SolarSystemData> = {
 };
 
 export const DOCKED_BACKGROUND_IMAGES: string[] = [
-    'https://raw.githubusercontent.com/peterbabulik/GalExpl3D/f076966e87140e44108444b4129977ed08ed5070/Pictures/Console.png',
+    'https://raw.githubusercontent.com/peterbabulik/GalExpl3D/c68cb4239c8d4f6a7a28d93e94e2eccc634a435c/Pictures/Fly.gif',
 'https://raw.githubusercontent.com/peterbabulik/GalExpl3D/2aee28e697a6268b028c318a2ffb4ef128a3a10d/Pictures/Skills.png',
 'https://raw.githubusercontent.com/peterbabulik/GalExpl3D/c555be3672cc6d0e19ebcc129e521a806795c2c3/Pictures/FirstBlood.png',
 'https://raw.githubusercontent.com/peterbabulik/GalExpl3D/main/Pictures/WeWantYou9.png',
