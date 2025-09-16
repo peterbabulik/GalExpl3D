@@ -260,7 +260,7 @@ The current foundation is robust, paving the way for even deeper and more emerge
     
 ### Console implemented, also Auto Attack based on rateOfFire of gun module 
 <div align="center">
-<img width="1200" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/f076966e87140e44108444b4129977ed08ed5070/Pictures/Console.png" />
+<img width="1200" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/c68cb4239c8d4f6a7a28d93e94e2eccc634a435c/Pictures/Fly.gif" />
 </div>
 
 *   **Advanced In-Game Console & Feedback:**
