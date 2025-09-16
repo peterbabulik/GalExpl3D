@@ -262,7 +262,7 @@ export const VirtualJoystick: React.FC<{ onMove: (vector: { x: number; y: number
         <div 
             ref={baseRef}
             onTouchStart={handleTouchStart}
-            className="absolute bottom-10 left-10 w-32 h-32 bg-white/10 rounded-full flex items-center justify-center z-50"
+            className="absolute bottom-10 right-10 w-32 h-32 bg-white/10 rounded-full flex items-center justify-center z-50"
             aria-hidden="true"
         >
             <div 

@@ -13,7 +13,15 @@ export enum GameState {
 
 export type ItemCategory = 'Ship' | 'Module' | 'Material' | 'Blueprint' | 'Ore' | 'Mineral' | 'Component' | 'Consumable' | 'Ammunition' | 'Structure' | 'Drone';
 
+export type ConsoleMessageType = 'damage_in' | 'damage_out' | 'mining' | 'loot' | 'repair' | 'system' | 'bounty';
+
 // --- UI & SCENE DATA ---
+
+export interface ConsoleMessage {
+    timestamp: string;
+    text: string;
+    type: ConsoleMessageType;
+}
 
 export interface TooltipData {
     visible: boolean;

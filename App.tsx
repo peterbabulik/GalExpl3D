@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
 import { GameState } from './types';
-import type { PlayerState, TooltipData, Target, TargetData, DockingData, NavObject, NavPanelItem, StorageLocation, Module, Ore, AgentData, MissionData, SolarSystemData, Drone, AnyItem } from './types';
+import type { PlayerState, TooltipData, Target, TargetData, DockingData, NavObject, NavPanelItem, StorageLocation, Module, Ore, AgentData, MissionData, SolarSystemData, Drone, AnyItem, ConsoleMessage, ConsoleMessageType } from './types';
 import { 
     GALAXY_DATA,
     SOLAR_SYSTEM_DATA,
@@ -37,6 +37,7 @@ import {
 import { AgentInterface } from './GeminiAgent';
 // FIX: Import SkillsUI component to render the skills modal.
 import { SkillsUI } from './SkillsUI';
+import { ConsoleUI } from './Console';
 
 import { ASTEROID_BELT_TYPES } from './ores';
 import { createAsteroidBelt } from './asteroids';
@@ -56,6 +57,7 @@ const DOCKING_RANGE = 1500;
 const MINING_RANGE = 1500;
 const LOOT_RANGE = 2500;
 const ENEMY_ATTACK_COOLDOWN = 3000; // ms
+const MAX_CONSOLE_MESSAGES = 100;
 
 interface MiningState {
     targetId: string;
@@ -152,6 +154,7 @@ export default function App() {
     const [droneStatus, setDroneStatus] = useState<DroneStatus>('docked');
     const [isTakingDamage, setIsTakingDamage] = useState(false);
     const [showDeathScreen, setShowDeathScreen] = useState(false);
+    const [consoleMessages, setConsoleMessages] = useState<ConsoleMessage[]>([]);
 
     // Persistence State
     const [isLoading, setIsLoading] = useState(true);
@@ -216,6 +219,20 @@ export default function App() {
     useEffect(() => { activeSystemIdRef.current = activeSystemId; }, [activeSystemId]);
     // FIX: Update activeModuleSlotsRef when activeModuleSlots state changes.
     useEffect(() => { activeModuleSlotsRef.current = activeModuleSlots; }, [activeModuleSlots]);
+
+    // --- CONSOLE LOGGING ---
+    const addConsoleMessage = useCallback((text: string, type: ConsoleMessageType) => {
+        const timestamp = new Date().toLocaleTimeString('en-GB');
+        const newMessage: ConsoleMessage = { timestamp, text, type };
+
+        setConsoleMessages(prevMessages => {
+            const newMessages = [...prevMessages, newMessage];
+            if (newMessages.length > MAX_CONSOLE_MESSAGES) {
+                return newMessages.slice(newMessages.length - MAX_CONSOLE_MESSAGES);
+            }
+            return newMessages;
+        });
+    }, []);
 
     // --- PERSISTENCE LOGIC ---
     const SAVE_KEY = 'GALEXPL3D_SAVEGAME';
@@ -337,6 +354,7 @@ export default function App() {
         if (threeRef.current.player) {
             undockPositionRef.current = threeRef.current.player.position.clone();
         }
+        addConsoleMessage(`Docking permission granted. Welcome to ${station.userData.name}.`, 'system');
         keysRef.current = {}; // Reset keyboard state to prevent "stuck keys"
         fadeTransition(() => {
             gameDataRef.current.dockedStation = station;
@@ -359,7 +377,7 @@ export default function App() {
 
             setGameState(GameState.DOCKED);
         });
-    }, [fadeTransition, despawnDrones]);
+    }, [fadeTransition, despawnDrones, addConsoleMessage]);
     
     const handleActivateShip = (newShipId: string) => {
         const stationId = getStationId(activeSystemId!, gameDataRef.current.dockedStation!.userData.name);
@@ -596,12 +614,14 @@ export default function App() {
         const currentShip = SHIP_DATA[playerState.currentShipId];
         if (!currentShip) return;
 
+        addConsoleMessage(`Warp drive active. Warping to ${targetData.selectedTarget.name}.`, 'system');
         gameDataRef.current.lookAtTarget = null; // Clear any manual look-at
         setIsWarpingState(true);
         startWarp(threeRef.current.player, targetData.selectedTarget.object3D, currentShip.attributes.speed, () => {
             setIsWarpingState(false);
+            addConsoleMessage('Warp drive disengaged.', 'system');
         });
-    }, [targetData.selectedTarget, playerState.currentShipId]);
+    }, [targetData.selectedTarget, playerState.currentShipId, addConsoleMessage]);
     
     const startMiningCycle = useCallback(() => {
         if (!targetData.selectedTarget || targetData.selectedTarget.type !== 'asteroid' || miningState) {
@@ -701,6 +721,8 @@ export default function App() {
                 const newState = JSON.parse(JSON.stringify(p));
                 newState.shipCargo.materials[oreData.id] = (newState.shipCargo.materials[oreData.id] || 0) + amountToAdd;
                 targetObject.userData.oreQuantity -= amountToAdd;
+
+                addConsoleMessage(`${amountToAdd.toLocaleString(undefined, {maximumFractionDigits: 0})} units of ${oreData.name} mined.`, 'mining');
     
                 const newVolume = currentVolume + (amountToAdd * oreVolumePerUnit);
                 if (newVolume >= capacity) {
@@ -724,7 +746,7 @@ export default function App() {
             setMiningState(null);
         }, cycleTime);
         return true;
-    }, [playerState, targetData.selectedTarget, miningState, handleDeselectTarget, isAutoMining]);
+    }, [playerState, targetData.selectedTarget, miningState, handleDeselectTarget, isAutoMining, addConsoleMessage]);
 
     const handleMineSingleCycle = useCallback(() => {
         if (miningState) return;
@@ -774,7 +796,9 @@ export default function App() {
             }
         });
 
-        if (totalDamage === 0) {
+        if (totalDamage > 0) {
+            addConsoleMessage(`Dealt ${totalDamage.toFixed(0)} damage to ${selectedTarget.name}.`, 'damage_out');
+        } else {
             return;
         }
         
@@ -800,7 +824,7 @@ export default function App() {
         // Update target state
         setTargetData(t => t.selectedTarget ? { ...t, selectedTarget: { ...t.selectedTarget, hp: newHp } } : t);
         selectedTarget.object3D.userData.hp = newHp;
-    }, [targetData.selectedTarget, playerState.currentShipFitting, deactivatedWeaponSlots]);
+    }, [targetData.selectedTarget, playerState.currentShipFitting, deactivatedWeaponSlots, addConsoleMessage]);
 
     // Autofire Effect
     useEffect(() => {
@@ -866,16 +890,18 @@ export default function App() {
         });
 
         // Remove wreck
+        addConsoleMessage(`Looted items from the wreck.`, 'loot');
         threeRef.current.scene?.remove(wreck);
         gameDataRef.current.wrecks = gameDataRef.current.wrecks.filter(w => w.uuid !== wreck.uuid);
         gameDataRef.current.navObjects = gameDataRef.current.navObjects.filter(n => n.object3D.uuid !== wreck.uuid);
         handleDeselectTarget();
 
-    }, [targetData.selectedTarget, handleDeselectTarget]);
+    }, [targetData.selectedTarget, handleDeselectTarget, addConsoleMessage]);
 
     const handlePlayerDeath = useCallback(() => {
         setShowDeathScreen(true);
         handleStopMining();
+        addConsoleMessage('SHIP DESTROYED. Ejecting pod...', 'damage_in');
     
         setTimeout(() => {
             const homeStationId = playerStateRef.current.homeStationId;
@@ -919,7 +945,7 @@ export default function App() {
             });
     
         }, 4000); // 4-second delay for the death screen
-    }, [fadeTransition, handleStopMining]);
+    }, [fadeTransition, handleStopMining, addConsoleMessage]);
 
     // This effect watches for the player's death condition (hull <= 0).
     useEffect(() => {
@@ -951,6 +977,7 @@ export default function App() {
     const handleTakeDamage = useCallback((damage: number) => {
         setIsTakingDamage(true);
         setTimeout(() => setIsTakingDamage(false), 200);
+        addConsoleMessage(`Took ${damage.toFixed(0)} damage.`, 'damage_in');
 
         setPlayerState(p => {
             const newHP = { ...p.shipHP };
@@ -967,6 +994,7 @@ export default function App() {
                 remainingDamage -= damageToArmor;
             }
             if (remainingDamage > 0 && newHP.hull > 0) {
+                // FIX: `damageToHull` was not defined. Using `remainingDamage` to apply the rest of the damage to the hull.
                 newHP.hull -= remainingDamage;
             }
             
@@ -976,7 +1004,7 @@ export default function App() {
 
             return { ...p, shipHP: newHP };
         });
-    }, []);
+    }, [addConsoleMessage]);
 
     // Effect to handle target destruction from any source
     useEffect(() => {
@@ -992,6 +1020,7 @@ export default function App() {
             // 1. Add bounty and skill XP
             setPlayerState(p => {
                 const bounty = enemy.bounty;
+                addConsoleMessage(`Received ${bounty.toLocaleString()} ISK bounty for destroying ${enemy.object3D.userData.name}.`, 'bounty');
                 let finalState = { ...p, isk: p.isk + bounty };
         
                 const xpFromBounty = Math.ceil(bounty / 50);
@@ -1034,7 +1063,7 @@ export default function App() {
 
             handleDeselectTarget();
         }
-    }, [targetData.selectedTarget, handleDeselectTarget, droneStatus]);
+    }, [targetData.selectedTarget, handleDeselectTarget, droneStatus, addConsoleMessage]);
 
 
      // --- DRONE LOGIC ---
@@ -1116,7 +1145,7 @@ export default function App() {
                     if (!t.selectedTarget || t.selectedTarget.type !== 'pirate' || !t.selectedTarget.hp) {
                         return t;
                     }
-
+                    addConsoleMessage(`Drones dealt ${totalDroneDamage.toFixed(0)} damage to ${t.selectedTarget.name}.`, 'damage_out');
                     const newHp = { ...t.selectedTarget.hp };
                     let remainingDamage = totalDroneDamage;
 
@@ -1142,7 +1171,7 @@ export default function App() {
         }, 1000); // Apply DPS every second
 
         return () => clearInterval(damageInterval);
-    }, [droneStatus]);
+    }, [droneStatus, addConsoleMessage]);
     
 
     const handleLoadDrone = useCallback((droneId: string) => {
@@ -1587,6 +1616,8 @@ export default function App() {
                             newState.shipCargo.materials[oreData.id] = (newState.shipCargo.materials[oreData.id] || 0) + amountToAdd;
                             targetObject.userData.oreQuantity -= amountToAdd;
 
+                            addConsoleMessage(`${amountToAdd.toLocaleString(undefined, {maximumFractionDigits: 0})} units of ${oreData.name} mined by drones.`, 'mining');
+
                             setTargetData(t => (t.selectedTarget && t.selectedTarget.uuid === targetObject.uuid) ? { ...t, selectedTarget: { ...t.selectedTarget, oreQuantity: targetObject.userData.oreQuantity } } : t);
 
                             if (targetObject.userData.oreQuantity <= 0) {
@@ -1884,7 +1915,7 @@ export default function App() {
             if (mountRef.current && three.renderer) mountRef.current.removeChild(three.renderer.domElement);
             three.renderer?.dispose();
         };
-    }, [gameState, activeSystemId]); 
+    }, [gameState, activeSystemId, addConsoleMessage]); 
 
     // Effect for handling docking via 'Enter' key
     useEffect(() => {
@@ -1976,10 +2007,12 @@ export default function App() {
                    
                     if (shieldBoostAmount && updatedHP && updatedHP.shield < updatedHP.maxShield) {
                         updatedHP.shield = Math.min(updatedHP.maxShield, updatedHP.shield + shieldBoostAmount);
+                        addConsoleMessage(`Shield booster repaired ${shieldBoostAmount} HP.`, 'repair');
                     }
                     
                     if (armorRepairAmount && updatedHP && updatedHP.armor < updatedHP.maxArmor) {
                         updatedHP.armor = Math.min(updatedHP.maxArmor, updatedHP.armor + armorRepairAmount);
+                        addConsoleMessage(`Armor repairer repaired ${armorRepairAmount} HP.`, 'repair');
                     }
                 }
             });
@@ -1993,7 +2026,7 @@ export default function App() {
         return () => {
             clearInterval(cycleInterval);
         };
-    }, []); // Run only once on mount
+    }, [addConsoleMessage]); // Run only once on mount
 
     const isTouchDevice = 'ontouchstart' in window;
     const currentShip = SHIP_DATA[playerState.currentShipId];
@@ -2141,6 +2174,7 @@ export default function App() {
                         </div>
                     )}
 
+                    {gameState === GameState.SOLAR_SYSTEM && !isModalOpen && <ConsoleUI messages={consoleMessages} />}
 
                     {gameState === GameState.SOLAR_SYSTEM && isTouchDevice && !isModalOpen && <VirtualJoystick onMove={setJoystickVector} />}
 
@@ -2169,6 +2203,7 @@ export default function App() {
                         <StationInterface 
                             stationName={gameDataRef.current.dockedStation.userData.name}
                             onUndock={() => {
+                                addConsoleMessage('Undocking sequence complete. Ship systems online.', 'system');
                                 setShowStationHelp(false);
                                 keysRef.current = {}; // Reset keyboard state to prevent "stuck keys"
                                 gameDataRef.current.dockedStation = null;
