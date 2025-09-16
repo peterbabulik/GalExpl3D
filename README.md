@@ -255,3 +255,15 @@ The current foundation is robust, paving the way for even deeper and more emerge
     *   **Forge Your Own Path:** Your skills advance by performing related actions in the game—no time gates. The more you fight, the better you get at combat; the more you build, the more efficient your manufacturing becomes.
     *   **Meaningful Specialization:** Progress through a deep skill system covering Industry, Mining, Combat, Reprocessing, and more. Your choices create a truly unique pilot that reflects your personal playstyle.
     *   **Track Your Mastery:** Monitor your progression with a clean, intuitive Skills UI, showing your current XP, level, and the powerful passive bonuses each skill provides.
+
+
+    
+### Now with skills! 
+<div align="center">
+<img width="1200" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/f076966e87140e44108444b4129977ed08ed5070/Pictures/Console.png" />
+</div>
+
+*   **Advanced In-Game Console & Feedback:**
+    *   Stay informed with a classic, in-game **console** that provides real-time text feedback on all major actions, from mining yields to warp drive activations.
+    *   A polished, icon-driven HUD provides at-a-glance status of your ship's modules and active drones.
+
