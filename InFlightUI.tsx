@@ -201,25 +201,27 @@ export const SelectedTargetUI: React.FC<{
     target: Target | null;
     miningState: { targetId: string, progress: number } | null;
     isAutoMining: boolean;
+    isAutoAttacking: boolean;
     onWarp: () => void;
     onMine: () => void;
     onAutoMine: () => void;
     onStopMine: () => void;
     onLookAt: () => void;
     onDeselect: () => void;
-    onAttack: () => void;
+    onAttackSingle: () => void;
+    onAutoAttackStart: () => void;
+    onAutoAttackStop: () => void;
     setTooltip: (content: string, event: React.MouseEvent) => void;
     clearTooltip: () => void;
     isDockable: boolean;
     onDock: () => void;
     onLootWreck: () => void;
-}> = ({ target, miningState, isAutoMining, onWarp, onMine, onAutoMine, onStopMine, onLookAt, onDeselect, onAttack, setTooltip, clearTooltip, isDockable, onDock, onLootWreck }) => {
+}> = ({ target, miningState, isAutoMining, isAutoAttacking, onWarp, onMine, onAutoMine, onStopMine, onLookAt, onDeselect, onAttackSingle, onAutoAttackStart, onAutoAttackStop, setTooltip, clearTooltip, isDockable, onDock, onLootWreck }) => {
     if (!target) return null;
 
     const isActivelyMining = miningState !== null || isAutoMining;
     const canMine = target.type === 'asteroid' && target.distance <= MINING_RANGE;
     const canWarp = target.distance > WARP_MIN_DISTANCE;
-    const canAttack = target.type === 'pirate';
     const canLoot = target.type === 'wreck' && target.distance <= LOOT_RANGE;
 
     const iconStyle = "w-8 h-8 p-1";
@@ -251,13 +253,6 @@ export const SelectedTargetUI: React.FC<{
                 <button onClick={onWarp} disabled={!canWarp} className="bg-gray-700/80 rounded-full border border-gray-400 text-white hover:bg-gray-600/90 disabled:bg-gray-800/50 disabled:text-gray-500" onMouseEnter={(e) => setTooltip('Warp To', e)} onMouseLeave={clearTooltip} aria-label="Warp to Target">
                     <svg className={iconStyle} viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 5H11l5 7-5 7h4.5l5-7z"></path><path d="M8.5 5H4l5 7-5 7h4.5l5-7z"></path></svg>
                 </button>
-                {target.type === 'pirate' && (
-                     <button onClick={onAttack} disabled={!canAttack} className="bg-red-800/80 rounded-full border border-red-400 text-white hover:bg-red-700/90 disabled:bg-gray-800/50 disabled:text-gray-500" onMouseEnter={(e) => setTooltip('Fight', e)} onMouseLeave={clearTooltip} aria-label="Fight Target">
-                         <svg className={iconStyle} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M12 2L12 8"></path><path d="M12 16L12 22"></path><path d="M17 7L17 17"></path><path d="M7 7L7 17"></path><path d="M22 12L16 12"></path><path d="M8 12L2 12"></path>
-                        </svg>
-                    </button>
-                )}
                 {target.type === 'station' && (
                     <button onClick={onDock} disabled={!isDockable} className="bg-gray-700/80 rounded-lg border border-gray-400 text-white hover:bg-gray-600/90 disabled:bg-gray-800/50 disabled:text-gray-500" onMouseEnter={(e) => setTooltip('Dock at Station', e)} onMouseLeave={clearTooltip} aria-label="Dock at Station">
                         <svg className={iconStyle} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 2L12 8"></path><path d="M8 5L12 1L16 5"></path><path d="M3 10C3 7.23858 5.23858 5 8 5H16C18.7614 5 21 7.23858 21 10V19C21 20.6569 19.6569 22 18 22H6C4.34315 22 3 20.6569 3 19V10Z"></path></svg>
@@ -285,6 +280,16 @@ export const SelectedTargetUI: React.FC<{
                     </>
                 )}
             </div>
+             {target.type === 'pirate' && (
+                isAutoAttacking ? (
+                    <UIButton onClick={onAutoAttackStop} className="w-full mt-1 !bg-red-700">Stop Attacking</UIButton>
+                ) : (
+                    <div className="flex gap-2 mt-1">
+                        <UIButton onClick={onAttackSingle} className="flex-1">Attack</UIButton>
+                        <UIButton onClick={onAutoAttackStart} className="flex-1">Auto Attack</UIButton>
+                    </div>
+                )
+            )}
             {target.type === 'wreck' && (
                 <UIButton onClick={onLootWreck} disabled={!canLoot} className="w-full mt-1">
                     Load to Cargo
@@ -399,6 +404,8 @@ export const MissionTrackerUI: React.FC<{ playerState: PlayerState }> = ({ playe
     if (!playerState.activeMissions || playerState.activeMissions.length === 0) {
         return null;
     }
+    
+    const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
     return (
         <div className="w-72 max-h-[30vh] bg-gray-900/80 border border-gray-600 p-2.5 box-border flex flex-col allow-touch-scroll">
@@ -409,19 +416,33 @@ export const MissionTrackerUI: React.FC<{ playerState: PlayerState }> = ({ playe
                     if (!objectiveId) return null;
                     
                     const required = mission.objectives[objectiveId];
-                    const stationHangar = playerState.stationHangars[mission.stationId];
-                    const current = stationHangar?.materials[objectiveId] || 0;
-                    const complete = current >= required;
-                    const objectiveItem = getItemData(objectiveId);
+                    let current = 0;
+                    let complete = false;
+                    let objectiveItem: AnyItem | undefined = undefined;
+                    let objectiveText = '';
+
+                    if (mission.type === 'mining') {
+                        const stationHangar = playerState.stationHangars[mission.stationId];
+                        current = stationHangar?.materials[objectiveId] || 0;
+                        complete = current >= required;
+                        objectiveItem = getItemData(objectiveId);
+                        objectiveText = `${objectiveItem?.name}: `;
+                    } else if (mission.type === 'combat') {
+                        current = mission.progress?.[objectiveId] || 0;
+                        complete = current >= required;
+                        const pirateType = objectiveId.split('_').pop() || 'pirate';
+                        objectiveText = `Destroy ${capitalize(pirateType)} Pirates: `;
+                    }
 
                     return (
                         <div key={mission.id}>
                             <p className="font-bold m-0 leading-tight">{mission.title}</p>
                             <p className="text-xs text-gray-400 m-0 leading-tight">Agent: {mission.agent.name} ({mission.agent.corporation})</p>
                             <div className="text-sm flex items-center gap-2 mt-1">
-                                <ItemIcon item={objectiveItem} size="small" />
+                                {mission.type === 'mining' && <ItemIcon item={objectiveItem} size="small" />}
+                                {mission.type === 'combat' && <span className="text-red-400 text-lg" aria-hidden="true">🎯</span>}
                                 <div>
-                                    <span className="text-gray-300">{objectiveItem?.name}: </span>
+                                    <span className="text-gray-300">{objectiveText}</span>
                                     <span className={complete ? 'text-green-400' : 'text-yellow-400'}>
                                         {Math.min(current, required).toLocaleString()} / {required.toLocaleString()}
                                     </span>

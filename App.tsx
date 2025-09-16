@@ -140,6 +140,7 @@ export default function App() {
     const [isWarpingState, setIsWarpingState] = useState(false);
     const [miningState, setMiningState] = useState<MiningState | null>(null);
     const [isAutoMining, setIsAutoMining] = useState(false);
+    const [isAutoAttacking, setIsAutoAttacking] = useState(false);
     const [miningTargetScreenPos, setMiningTargetScreenPos] = useState<{x: number, y: number, visible: boolean} | null>(null);
     const [isFading, setFading] = useState(false);
     const [tooltipData, setTooltipData] = useState<TooltipData>({ visible: false, content: '', x: 0, y: 0 });
@@ -196,6 +197,7 @@ export default function App() {
     const droneMiningTimerRef = useRef<number>(0);
     const lastEnemyAttackTimeRef = useRef<number>(0);
     const moduleCycleTimersRef = useRef<Record<string, number>>({});
+    const weaponCycleTimersRef = useRef<Record<string, number>>({});
     // FIX: Add ref for activeModuleSlots to be used in setInterval to access latest state.
     const activeModuleSlotsRef = useRef(activeModuleSlots);
     
@@ -600,6 +602,7 @@ export default function App() {
         if (droneStatus === 'attacking' || droneStatus === 'mining') {
             setDroneStatus('idle');
         }
+        setIsAutoAttacking(false);
         setTargetData(t => ({...t, selectedTarget: null}));
     }, [targetData.selectedTarget, miningState, handleStopMining, droneStatus]);
 
@@ -770,72 +773,97 @@ export default function App() {
         }
     }, [isAutoMining, miningState, startMiningCycle]);
 
-    const handleAttackTarget = useCallback(() => {
-        const { selectedTarget } = targetData;
+    const fireWeapons = useCallback(() => {
+        const { selectedTarget } = targetDataRef.current;
         if (!selectedTarget || selectedTarget.type !== 'pirate' || !selectedTarget.hp) return;
 
-        const fittedWeapons = playerState.currentShipFitting.high
+        const now = Date.now();
+        let totalDamageThisTick = 0;
+
+        const fittedWeapons = playerStateRef.current.currentShipFitting.high
             .map((id, index) => ({ id, slotKey: `high-${index}` }))
             .filter(item => {
                 if (!item.id || deactivatedWeaponSlots.includes(item.slotKey)) return false;
                 const moduleData = getItemData(item.id);
                 return !!moduleData && ['projectile', 'hybrid', 'energy', 'missile'].includes(moduleData.subcategory);
             })
-            .map(item => getItemData(item.id) as Module);
-        
-        if (fittedWeapons.length === 0) {
-            return;
-        }
+            .map(item => ({ module: getItemData(item.id) as Module, slotKey: item.slotKey }));
 
-        let totalDamage = 0;
+        for (const { module, slotKey } of fittedWeapons) {
+            const lastFired = weaponCycleTimersRef.current[slotKey] || 0;
+            const cycleTime = (module.attributes.rateOfFire || 5) * 1000;
 
-        fittedWeapons.forEach(weapon => {
-            const range = weapon.attributes.optimalRange || 0;
-            if (selectedTarget.distance <= range) {
-                totalDamage += weapon.attributes.damage || 0;
+            if (now - lastFired >= cycleTime) {
+                const range = module.attributes.optimalRange || 0;
+                if (selectedTarget.distance <= range) {
+                    weaponCycleTimersRef.current[slotKey] = now;
+                    totalDamageThisTick += module.attributes.damage || 0;
+
+                    setActiveModuleSlots(prev => [...new Set([...prev, slotKey])]);
+                    setTimeout(() => {
+                        setActiveModuleSlots(prev => prev.filter(s => s !== slotKey));
+                    }, 300);
+                }
             }
-        });
-
-        if (totalDamage > 0) {
-            addConsoleMessage(`Dealt ${totalDamage.toFixed(0)} damage to ${selectedTarget.name}.`, 'damage_out');
-        } else {
-            return;
-        }
-        
-        const newHp = { ...selectedTarget.hp };
-        let remainingDamage = totalDamage;
-
-        // Apply damage to shield, then armor, then hull
-        if (newHp.shield > 0) {
-            const damageToShield = Math.min(newHp.shield, remainingDamage);
-            newHp.shield -= damageToShield;
-            remainingDamage -= damageToShield;
-        }
-        if (remainingDamage > 0 && newHp.armor > 0) {
-            const damageToArmor = Math.min(newHp.armor, remainingDamage);
-            newHp.armor -= damageToArmor;
-            remainingDamage -= damageToArmor;
-        }
-        if (remainingDamage > 0 && newHp.hull > 0) {
-            const damageToHull = Math.min(newHp.hull, remainingDamage);
-            newHp.hull -= damageToHull;
         }
 
-        // Update target state
-        setTargetData(t => t.selectedTarget ? { ...t, selectedTarget: { ...t.selectedTarget, hp: newHp } } : t);
-        selectedTarget.object3D.userData.hp = newHp;
-    }, [targetData.selectedTarget, playerState.currentShipFitting, deactivatedWeaponSlots, addConsoleMessage]);
+        if (totalDamageThisTick > 0) {
+            addConsoleMessage(`Dealt ${totalDamageThisTick.toFixed(0)} damage to ${selectedTarget.name}.`, 'damage_out');
+            
+            setTargetData(t => {
+                if (!t.selectedTarget || !t.selectedTarget.hp) return t;
+                const newHp = { ...t.selectedTarget.hp };
+                let remainingDamage = totalDamageThisTick;
+                
+                if (newHp.shield > 0) {
+                    const damageToShield = Math.min(newHp.shield, remainingDamage);
+                    newHp.shield -= damageToShield;
+                    remainingDamage -= damageToShield;
+                }
+                if (remainingDamage > 0 && newHp.armor > 0) {
+                    const damageToArmor = Math.min(newHp.armor, remainingDamage);
+                    newHp.armor -= damageToArmor;
+                    remainingDamage -= damageToArmor;
+                }
+                if (remainingDamage > 0 && newHp.hull > 0) {
+                    const damageToHull = Math.min(newHp.hull, remainingDamage);
+                    newHp.hull -= damageToHull;
+                }
+                
+                selectedTarget.object3D.userData.hp = newHp;
+                
+                return { ...t, selectedTarget: { ...t.selectedTarget, hp: newHp } };
+            });
+        }
+    }, [addConsoleMessage, deactivatedWeaponSlots]);
 
-    // Autofire Effect
+    const handleAttackSingleCycle = useCallback(() => {
+        fireWeapons();
+    }, [fireWeapons]);
+
+    const handleStartAutoAttack = useCallback(() => {
+        weaponCycleTimersRef.current = {};
+        setIsAutoAttacking(true);
+    }, []);
+
+    const handleStopAutoAttack = useCallback(() => {
+        setIsAutoAttacking(false);
+    }, []);
+
+    // Auto-attack Effect
     useEffect(() => {
-        const fireInterval = setInterval(() => {
-            if (gameState === GameState.SOLAR_SYSTEM && targetData.selectedTarget?.type === 'pirate') {
-                handleAttackTarget();
-            }
-        }, 1500); // Fire every 1.5 seconds
+        if (!isAutoAttacking) return;
 
-        return () => clearInterval(fireInterval);
-    }, [gameState, targetData.selectedTarget, handleAttackTarget]);
+        const attackInterval = setInterval(() => {
+            if (gameStateRef.current === GameState.SOLAR_SYSTEM && targetDataRef.current.selectedTarget?.type === 'pirate') {
+                fireWeapons();
+            } else {
+                setIsAutoAttacking(false);
+            }
+        }, 200); // Check 5 times per second
+
+        return () => clearInterval(attackInterval);
+    }, [isAutoAttacking, fireWeapons]);
     
     const handleLootWreck = useCallback(() => {
         if (!targetData.selectedTarget || targetData.selectedTarget.type !== 'wreck') return;
@@ -2127,13 +2155,16 @@ export default function App() {
                             target={targetData.selectedTarget} 
                             miningState={miningState ? { targetId: miningState.targetId, progress: miningState.progress } : null} 
                             isAutoMining={isAutoMining}
+                            isAutoAttacking={isAutoAttacking}
                             onWarp={handleWarpToTarget} 
                             onMine={handleMineSingleCycle}
                             onAutoMine={handleStartAutoMine}
                             onStopMine={handleStopMining}
                             onLookAt={handleLookAtTarget}
                             onDeselect={handleDeselectTarget}
-                            onAttack={handleAttackTarget}
+                            onAttackSingle={handleAttackSingleCycle}
+                            onAutoAttackStart={handleStartAutoAttack}
+                            onAutoAttackStop={handleStopAutoAttack}
                             setTooltip={setTooltipContent}
                             clearTooltip={clearTooltipContent}
                             isDockable={isDockable}
