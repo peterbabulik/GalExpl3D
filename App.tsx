@@ -1,10 +1,3 @@
-
-
-
-
-
-
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
 import { GameState } from './types';
@@ -1194,53 +1187,30 @@ export default function App() {
         );
     }, []);
     
-    const handleToggleWeapon = useCallback((slotKey: string) => {
-        setDeactivatedWeaponSlots(prev =>
-            prev.includes(slotKey)
-                ? prev.filter(s => s !== slotKey)
-                : [...prev, slotKey]
-        );
-    }, []);
-
-    const handleToggleModuleGroup = useCallback((slotType: 'medium' | 'low') => {
-        const slots = playerStateRef.current.currentShipFitting[slotType];
-        if (!slots || slots.length === 0) return;
+    const handleToggleWeaponGroup = useCallback(() => {
+        const highSlots = playerStateRef.current.currentShipFitting.high;
+        const allWeaponSlots = highSlots
+            .map((id, index) => ({ id, slotKey: `high-${index}` }))
+            .filter(item => {
+                if (!item.id) return false;
+                const moduleData = getItemData(item.id);
+                return !!moduleData && ['projectile', 'hybrid', 'energy', 'missile'].includes(moduleData.subcategory);
+            })
+            .map(item => item.slotKey);
     
-        let firstModuleSlotKey: string | null = null;
-        for (let i = 0; i < slots.length; i++) {
-            if (slots[i]) {
-                firstModuleSlotKey = `${slotType}-${i}`;
-                break;
-            }
+        if (allWeaponSlots.length === 0) return;
+    
+        // Check if any weapon is active (i.e., NOT in the deactivated list)
+        const anyWeaponActive = allWeaponSlots.some(slotKey => !deactivatedWeaponSlots.includes(slotKey));
+    
+        if (anyWeaponActive) {
+            // If at least one is active, deactivate all of them
+            setDeactivatedWeaponSlots(allWeaponSlots);
+        } else {
+            // If all are deactivated, activate all of them
+            setDeactivatedWeaponSlots([]);
         }
-    
-        if (!firstModuleSlotKey) return;
-    
-        const isGroupCurrentlyActive = activeModuleSlots.includes(firstModuleSlotKey);
-    
-        setActiveModuleSlots(prev => {
-            const newActiveSlots = new Set(prev);
-            
-            for (let i = 0; i < slots.length; i++) {
-                const moduleId = slots[i];
-                if (!moduleId) continue;
-    
-                const module = getItemData(moduleId) as Module;
-                const isToggleable = !['mining_laser', 'projectile', 'hybrid', 'energy', 'missile'].includes(module.subcategory);
-    
-                if (isToggleable) {
-                    const slotKey = `${slotType}-${i}`;
-                    if (isGroupCurrentlyActive) {
-                        newActiveSlots.delete(slotKey);
-                    } else {
-                        newActiveSlots.add(slotKey);
-                    }
-                }
-            }
-            
-            return Array.from(newActiveSlots);
-        });
-    }, [activeModuleSlots]);
+    }, [deactivatedWeaponSlots]);
 
 
     const handleSlotClick = useCallback((slotType: 'high' | 'medium' | 'low', slotIndex: number) => {
@@ -1254,13 +1224,13 @@ export default function App() {
         const category = module.subcategory;
 
         if (['projectile', 'hybrid', 'energy', 'missile'].includes(category)) {
-            handleToggleWeapon(slotKey);
+            handleToggleWeaponGroup();
         } else if (category.includes('miner')) {
             handleMineSingleCycle();
         } else {
             handleToggleModule(slotKey);
         }
-    }, [handleToggleWeapon, handleMineSingleCycle, handleToggleModule]);
+    }, [handleToggleWeaponGroup, handleMineSingleCycle, handleToggleModule]);
 
     const switchToGalaxyMap = () => {
          if (gameState === GameState.TRANSITIONING) return;
@@ -2149,8 +2119,6 @@ export default function App() {
                             onSlotClick={handleSlotClick}
                             activeModuleSlots={activeModuleSlots}
                             deactivatedWeaponSlots={deactivatedWeaponSlots}
-                            // FIX: Corrected prop value from undefined 'onToggleModuleGroup' to the defined handler 'handleToggleModuleGroup'.
-                            onToggleModuleGroup={handleToggleModuleGroup}
                             setTooltip={setTooltipContent}
                             clearTooltip={clearTooltipContent}
                             hasDroneBay={hasDroneBay}
@@ -2203,6 +2171,7 @@ export default function App() {
                             onUndock={() => {
                                 setShowStationHelp(false);
                                 keysRef.current = {}; // Reset keyboard state to prevent "stuck keys"
+                                gameDataRef.current.dockedStation = null;
                                 fadeTransition(() => setGameState(GameState.SOLAR_SYSTEM));
                             }}
                             onOpenCrafting={() => { setCraftingOpen(true); setShowStationHelp(false); }}

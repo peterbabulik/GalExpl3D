@@ -1,5 +1,5 @@
 // InFlightUI.tsx
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import type { PlayerState, Target, NavPanelItem, Module, Drone, AnyItem } from './types';
 import { 
     SHIP_DATA,
@@ -11,6 +11,35 @@ import { UIButton, ItemIcon, HPBar } from './UI';
 const MINING_RANGE = 1500;
 const WARP_MIN_DISTANCE = 1000;
 const LOOT_RANGE = 2500;
+
+const ModuleIcon: React.FC<{ module: Module }> = ({ module }) => {
+    const [imageError, setImageError] = useState(false);
+
+    useEffect(() => {
+        setImageError(false);
+    }, [module.id]);
+
+    const imagePath = `assets/pic/${module.name}.png`;
+
+    if (imageError) {
+        const getModuleIconFallback = (module: Module): string => {
+            const sub = module.subcategory;
+            if (sub.includes('miner')) return 'M';
+            if (sub.includes('projectile') || sub.includes('hybrid') || sub.includes('energy')) return 'W';
+            if (sub.includes('missile')) return 'L';
+            if (sub.includes('shield_booster') || sub.includes('shield_extender')) return 'S';
+            if (sub.includes('armor_repairer') || sub.includes('plates')) return 'A';
+            if (sub.includes('afterburner') || sub.includes('microwarpdrive')) return 'P';
+            return 'G'; // General/Generic
+        };
+        return <span className="text-xl font-bold text-white">{getModuleIconFallback(module)}</span>;
+    }
+
+    return (
+        <img src={imagePath} alt={module.name} className="w-full h-full object-contain" onError={() => setImageError(true)} />
+    );
+};
+
 
 export const NavPanel: React.FC<{ 
     data: NavPanelItem[];
@@ -273,7 +302,6 @@ export const ModuleBarUI: React.FC<{
     onSlotClick: (slotType: 'high' | 'medium' | 'low', slotIndex: number) => void;
     activeModuleSlots: string[];
     deactivatedWeaponSlots: string[];
-    onToggleModuleGroup: (slotType: 'medium' | 'low') => void;
     setTooltip: (content: string, event: React.MouseEvent) => void;
     clearTooltip: () => void;
     hasDroneBay: boolean;
@@ -286,20 +314,8 @@ export const ModuleBarUI: React.FC<{
     onDroneMine: () => void;
     isMineButtonDisabled: boolean;
     selectedTargetType: 'pirate' | 'asteroid' | 'station' | 'planet' | 'star' | 'wreck' | null;
-}> = ({ playerState, onSlotClick, activeModuleSlots, deactivatedWeaponSlots, onToggleModuleGroup, setTooltip, clearTooltip, hasDroneBay, droneStatus, activeDrones, totalDrones, onToggleDrones, onDroneAttack, isAttackButtonDisabled, onDroneMine, isMineButtonDisabled, selectedTargetType }) => {
+}> = ({ playerState, onSlotClick, activeModuleSlots, deactivatedWeaponSlots, setTooltip, clearTooltip, hasDroneBay, droneStatus, activeDrones, totalDrones, onToggleDrones, onDroneAttack, isAttackButtonDisabled, onDroneMine, isMineButtonDisabled, selectedTargetType }) => {
     const { high, medium, low } = playerState.currentShipFitting;
-
-    const getModuleIcon = (module: Module | undefined): string => {
-        if (!module) return '';
-        const sub = module.subcategory;
-        if (sub.includes('miner')) return 'M';
-        if (sub.includes('projectile') || sub.includes('hybrid') || sub.includes('energy')) return 'W';
-        if (sub.includes('missile')) return 'L';
-        if (sub.includes('shield_booster') || sub.includes('shield_extender')) return 'S';
-        if (sub.includes('armor_repairer') || sub.includes('plates')) return 'A';
-        if (sub.includes('afterburner') || sub.includes('microwarpdrive')) return 'P';
-        return 'G'; // General/Generic
-    };
 
     const renderSlot = (moduleId: string | null, slotType: 'high' | 'medium' | 'low', slotIndex: number) => {
         const slotKey = `${slotType}-${slotIndex}`;
@@ -309,9 +325,9 @@ export const ModuleBarUI: React.FC<{
         const isWeapon = module?.slot === 'high' && ['projectile', 'hybrid', 'energy', 'missile'].includes(module.subcategory);
         const isDeactivated = isWeapon && deactivatedWeaponSlots.includes(slotKey);
 
-        const baseStyle = "w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold border-2 transition-all";
-        const emptyStyle = "bg-gray-800 border-gray-600 text-gray-700";
-        const filledStyle = "bg-gray-700 border-gray-400 text-white cursor-pointer hover:bg-gray-600";
+        const baseStyle = "w-12 h-12 rounded-md flex items-center justify-center border-2 transition-all p-0.5";
+        const emptyStyle = "bg-gray-800 border-gray-600";
+        const filledStyle = "bg-gray-700 border-gray-400 cursor-pointer hover:bg-gray-600";
         const activeStyle = isActive ? "!border-green-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" : "";
         const deactivatedStyle = isDeactivated ? "opacity-40 !bg-red-900/50" : "";
 
@@ -324,21 +340,10 @@ export const ModuleBarUI: React.FC<{
                 onMouseEnter={(e) => module && setTooltip(module.name, e)}
                 onMouseLeave={clearTooltip}
             >
-                {module && getModuleIcon(module)}
+                {module && <ModuleIcon module={module} />}
             </div>
         );
     };
-
-    const GroupButton: React.FC<{slotType: 'medium' | 'low'}> = ({ slotType }) => (
-         <button 
-            onClick={() => onToggleModuleGroup(slotType)}
-            className="w-12 h-6 bg-gray-700 border border-gray-500 rounded text-xs hover:bg-gray-600"
-            onMouseEnter={(e) => setTooltip(`Group Toggle ${slotType.charAt(0).toUpperCase() + slotType.slice(1)}`, e)}
-            onMouseLeave={clearTooltip}
-        >
-            Group
-        </button>
-    );
     
     const droneButtonText = droneStatus === 'docked' ? 'Launch Drones' : 'Return Drones';
     const isDroneButtonDisabled = (droneStatus === 'docked' && totalDrones === 0) || droneStatus === 'returning';
@@ -380,11 +385,9 @@ export const ModuleBarUI: React.FC<{
             )}
             <div className="flex justify-center items-center gap-1.5">
                 {low.map((mod, i) => renderSlot(mod, 'low', i))}
-                {low.length > 0 && <GroupButton slotType="low" />}
             </div>
              <div className="flex justify-center items-center gap-1.5">
                 {medium.map((mod, i) => renderSlot(mod, 'medium', i))}
-                {medium.length > 0 && <GroupButton slotType="medium" />}
             </div>
             <div className="flex justify-center gap-1.5">{high.map((mod, i) => renderSlot(mod, 'high', i))}</div>
         </div>
