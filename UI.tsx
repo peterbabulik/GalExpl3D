@@ -66,11 +66,10 @@ export const SystemInfoUI: React.FC<{
     systemName: string;
     playerState: PlayerState;
     onNavClick: () => void;
-    onOpenSkills: () => void;
     isDocked: boolean;
-}> = ({ systemName, playerState, onNavClick, onOpenSkills, isDocked }) => {
+}> = ({ systemName, playerState, onNavClick, isDocked }) => {
     return (
-        <div className="absolute top-2.5 left-2.5 z-10 bg-black/50 p-2 rounded">
+        <div className="absolute top-2.5 left-2.5 z-[220] bg-black/50 p-2 rounded">
             <h1 className="text-2xl m-0">{systemName}</h1>
             <p className="text-lg text-yellow-400 m-0">{playerState.isk.toLocaleString(undefined, {
                 minimumFractionDigits: 2,
@@ -78,7 +77,6 @@ export const SystemInfoUI: React.FC<{
             })} ISK</p>
             <div className="flex gap-2 mt-2">
                  {!isDocked && <UIButton onClick={onNavClick}>Navigation</UIButton>}
-                 {isDocked && <UIButton onClick={onOpenSkills}>Skills</UIButton>}
             </div>
         </div>
     );

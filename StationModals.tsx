@@ -993,7 +993,7 @@ export const StationInterface: React.FC<{
     isHomeStation: boolean;
 }> = ({ stationName, onUndock, onOpenCrafting, onOpenShipHangar, onOpenItemHangar, onOpenFitting, onOpenReprocessing, onOpenMarket, onOpenAgent, onOpenSkills, showHelp, onToggleHelp, onSetHomeStation, isHomeStation }) => {
     return (
-        <div className="absolute inset-0 bg-gray-900/95 z-[200] p-12 box-border flex flex-col items-center justify-center">
+        <div className="absolute inset-0 z-[200] p-12 box-border flex flex-col items-center justify-center">
             {showHelp && <StationHelpOverlay onClose={onToggleHelp} />}
              <div className="absolute top-5 right-5 z-[202]">
                 <button 

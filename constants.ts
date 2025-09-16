@@ -100,8 +100,8 @@ export const SOLAR_SYSTEM_DATA: Record<number, SolarSystemData> = {
         name: 'Jita',
         star: { color: 0xFFF0DD, diameter: 1700000 },
         planets: [
-             { name: 'Jita IV', type: 'gas', diameter: 50000, distance: 10000, color: 0xFFA500 },
-             { name: 'Jita V', type: 'rocky', diameter: 8000, distance: 15000, color: 0x8B4513 },
+            { name: 'Jita IV', type: 'gas', diameter: 50000, distance: 10000, color: 0xFFA500 },
+            { name: 'Jita V', type: 'rocky', diameter: 8000, distance: 15000, color: 0x8B4513 },
         ],
         station: { name: 'Jita IV-4 Trade Hub', orbitsPlanetIndex: 0, orbitDistance: 800 },
         asteroidBeltType: 'rich',
@@ -110,7 +110,7 @@ export const SOLAR_SYSTEM_DATA: Record<number, SolarSystemData> = {
         name: 'Amarr',
         star: { color: 0xFFD700, diameter: 1800000 },
         planets: [
-             { name: 'Amarr I', type: 'terran', diameter: 14000, distance: 13000, color: 0xB8860B },
+            { name: 'Amarr I', type: 'terran', diameter: 14000, distance: 13000, color: 0xB8860B },
         ],
         station: { name: 'Amarr Imperial Palace', orbitsPlanetIndex: 0, orbitDistance: 600 },
         asteroidBeltType: 'moderate',
@@ -119,7 +119,7 @@ export const SOLAR_SYSTEM_DATA: Record<number, SolarSystemData> = {
         name: 'Dodixie',
         star: { color: 0xADD8E6, diameter: 1600000 },
         planets: [
-             { name: 'Dodixie IX', type: 'ice', diameter: 22000, distance: 20000, color: 0xADD8E6 },
+            { name: 'Dodixie IX', type: 'ice', diameter: 22000, distance: 20000, color: 0xADD8E6 },
         ],
         station: { name: 'Dodixie IX - Moon 20', orbitsPlanetIndex: 0, orbitDistance: 700 },
         asteroidBeltType: 'moderate',
@@ -134,7 +134,7 @@ export const SOLAR_SYSTEM_DATA: Record<number, SolarSystemData> = {
         name: 'Rens',
         star: { color: 0xFF6347, diameter: 1200000 },
         planets: [
-             { name: 'Rens VI', type: 'lava', diameter: 9000, distance: 9000, color: 0xDC143C },
+            { name: 'Rens VI', type: 'lava', diameter: 9000, distance: 9000, color: 0xDC143C },
         ],
         asteroidBeltType: 'dense',
     },
@@ -148,7 +148,7 @@ export const SOLAR_SYSTEM_DATA: Record<number, SolarSystemData> = {
         name: 'Rancer',
         star: { color: 0xFF0000, diameter: 800000 },
         planets: [
-             { name: 'Rancer I', type: 'barren', diameter: 4000, distance: 4000, color: 0x808080 },
+            { name: 'Rancer I', type: 'barren', diameter: 4000, distance: 4000, color: 0x808080 },
         ],
         asteroidBeltType: 'exceptional',
     },
@@ -156,7 +156,7 @@ export const SOLAR_SYSTEM_DATA: Record<number, SolarSystemData> = {
         name: 'Provi',
         star: { color: 0x00FFFF, diameter: 2100000 },
         planets: [
-             { name: 'Providence VII', type: 'gas', diameter: 60000, distance: 25000, color: 0x40E0D0 },
+            { name: 'Providence VII', type: 'gas', diameter: 60000, distance: 25000, color: 0x40E0D0 },
         ],
         asteroidBeltType: 'rich',
     },
@@ -170,7 +170,7 @@ export const SOLAR_SYSTEM_DATA: Record<number, SolarSystemData> = {
         name: 'Querious',
         star: { color: 0xF0E68C, diameter: 1400000 },
         planets: [
-             { name: 'Querious V', type: 'rocky', diameter: 11000, distance: 11000, color: 0xCD853F },
+            { name: 'Querious V', type: 'rocky', diameter: 11000, distance: 11000, color: 0xCD853F },
         ],
         asteroidBeltType: 'exceptional',
     },
@@ -178,7 +178,7 @@ export const SOLAR_SYSTEM_DATA: Record<number, SolarSystemData> = {
         name: 'Aridia',
         star: { color: 0xFFE4B5, diameter: 1300000 },
         planets: [
-             { name: 'Aridia III', type: 'desert', diameter: 7500, distance: 7500, color: 0xF5DEB3 },
+            { name: 'Aridia III', type: 'desert', diameter: 7500, distance: 7500, color: 0xF5DEB3 },
         ],
         asteroidBeltType: 'rich',
     },
@@ -253,6 +253,16 @@ export const SOLAR_SYSTEM_DATA: Record<number, SolarSystemData> = {
     },
 };
 
+export const DOCKED_BACKGROUND_IMAGES: string[] = [
+    'https://raw.githubusercontent.com/peterbabulik/GalExpl3D/f076966e87140e44108444b4129977ed08ed5070/Pictures/Console.png',
+'https://raw.githubusercontent.com/peterbabulik/GalExpl3D/2aee28e697a6268b028c318a2ffb4ef128a3a10d/Pictures/Skills.png',
+'https://raw.githubusercontent.com/peterbabulik/GalExpl3D/c555be3672cc6d0e19ebcc129e521a806795c2c3/Pictures/FirstBlood.png',
+'https://raw.githubusercontent.com/peterbabulik/GalExpl3D/main/Pictures/WeWantYou9.png',
+'https://raw.githubusercontent.com/peterbabulik/GalExpl3D/ee256151fe73f508b8f6cb8a86a842858156adc3/Pictures/MonkiesVsPirates2.png',
+'https://raw.githubusercontent.com/peterbabulik/GalExpl3D/main/Pictures/WeWantYou9.gif',
+];
+
+
 // FIX: `INITIAL_PLAYER_STATE` was used before it was defined.
 // To resolve this, `initialPlayerShipId` is declared first and used
 // to derive `initialShip` and `initialHP`, which are then used to
@@ -292,10 +302,10 @@ export const INITIAL_PLAYER_STATE: PlayerState = {
     stationHangars: {
         'station_1_Titan_Station': {
             items: [
-                'bp_rifter', 
+                'bp_rifter',
                 'bp_venture',
-                'bp_miner_i', 
-                'bp_shield_extender', 
+                'bp_miner_i',
+                'bp_shield_extender',
                 'bp_microwarpdrive',
                 'bp_fusion_s',
                 'bp_drone_bay_s',

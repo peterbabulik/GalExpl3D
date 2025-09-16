@@ -8,7 +8,8 @@ import {
     SHIP_DATA,
     BLUEPRINT_DATA,
     INITIAL_PLAYER_STATE,
-    getItemData
+    getItemData,
+    DOCKED_BACKGROUND_IMAGES
 } from './constants';
 import {
     Tooltip,
@@ -113,6 +114,35 @@ const NewPlayerModal: React.FC<{ onStart: (name: string) => void }> = ({ onStart
                 </button>
             </div>
         </div>
+    );
+};
+
+// --- Docked Background Component ---
+const DockedBackground: React.FC = () => {
+    const [currentIndex, setCurrentIndex] = useState(0);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setCurrentIndex(prevIndex => (prevIndex + 1) % DOCKED_BACKGROUND_IMAGES.length);
+        }, 10000); // Change image every 10 seconds
+
+        return () => clearInterval(interval);
+    }, []);
+
+    return (
+        <>
+            {DOCKED_BACKGROUND_IMAGES.map((url, index) => (
+                <div
+                    key={url}
+                    className="fixed inset-0 bg-cover bg-center z-0 transition-opacity duration-1000"
+                    style={{
+                        backgroundImage: `url(${url})`,
+                        opacity: index === currentIndex ? 1 : 0,
+                    }}
+                    aria-hidden="true"
+                />
+            ))}
+        </>
     );
 };
 
@@ -2120,11 +2150,9 @@ export default function App() {
                     </div>
                 </div>
             )}
-            {gameState === GameState.GALAX_MAP ? (
-                <GalaxyMap onSystemSelect={handleSystemSelect} />
-            ) : (
-                <div ref={mountRef} className="fixed inset-0" />
-            )}
+            {gameState === GameState.GALAX_MAP && <GalaxyMap onSystemSelect={handleSystemSelect} />}
+            {gameState === GameState.SOLAR_SYSTEM && <div ref={mountRef} className="fixed inset-0" />}
+            {gameState === GameState.DOCKED && <DockedBackground />}
 
             {isSolarSystemView && (
                 <>
@@ -2133,8 +2161,6 @@ export default function App() {
                         playerState={playerState}
                         onNavClick={switchToGalaxyMap}
                         isDocked={gameState === GameState.DOCKED}
-                        // FIX: Pass the onOpenSkills handler to open the skills UI modal.
-                        onOpenSkills={() => setSkillsOpen(true)}
                     />
                     
                     {gameState === GameState.SOLAR_SYSTEM && (
