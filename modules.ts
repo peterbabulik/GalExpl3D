@@ -526,7 +526,7 @@ export const MODULE_DATA: Record<string, Module> = {
             optimalRange: 7500,
             capacitorUsage: 5,
             powerGridUsage: 1,
-            cpuUsage: 35
+            cpuUsage: 24
         },
         requirements: {
             skills: {
@@ -581,7 +581,7 @@ export const MODULE_DATA: Record<string, Module> = {
         size: 'all',
         meta: 0,
         basePrice: 250000,
-        description: 'A bay that allows for the deployment and control of small drones.',
+        description: 'Enables drone deployment on ships that do not have a built-in drone bay. This module does not increase existing drone bay capacity or bandwidth.',
         attributes: {
             powerGridUsage: 10,
             cpuUsage: 25,

@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import type { ConsoleMessage, ConsoleMessageType, PlayerState, Module } from './types';
 import { SHIP_DATA, getItemData } from './constants';
+import { calculateShipStats } from './stat-calculator';
 
 const getMessageColor = (type: ConsoleMessageType): string => {
     switch (type) {
@@ -20,111 +21,13 @@ const ShipInfoPanel: React.FC<{ playerState: PlayerState, activeModuleSlots: str
     const shipStats = useMemo(() => {
         const currentShip = SHIP_DATA[playerState.currentShipId];
         if (!currentShip) return null;
-
-        // Base stats from the ship's hull
-        const stats = {
-            maxVelocity: currentShip.attributes.speed,
-            capacitor: {
-                capacity: currentShip.attributes.capacitor,
-                rechargeRate: currentShip.attributes.capacitorRechargeRate,
-                rechargeTime: 0,
-            },
-            defenses: {
-                shield: { hp: currentShip.attributes.shield, em: 0, thermal: 0, kinetic: 0, explosive: 0 },
-                armor: { hp: currentShip.attributes.armor, em: 0, thermal: 0, kinetic: 0, explosive: 0 },
-                hull: { hp: currentShip.attributes.hull, em: 0, thermal: 0, kinetic: 0, explosive: 0 },
-            },
-        };
         
         const allFittedModules = Object.values(playerState.currentShipFitting)
             .flat()
             .map(id => id ? getItemData(id) as Module : null)
             .filter((m): m is Module => m !== null);
             
-        // --- Initialize accumulators for percentage bonuses ---
-        let shieldBonusMultiplier = 1.0;
-        let armorBonusMultiplier = 1.0;
-        let capacitorCapacityMultiplier = 1.0;
-        // Recharge bonus is multiplicative on the time reduction factor
-        let capacitorRechargeTimeFactor = 1.0;
-
-
-        allFittedModules.forEach(module => {
-            const attrs = module.attributes;
-            
-            const slotKey = (() => {
-                for (const slotType in playerState.currentShipFitting) {
-                    const typedSlot = slotType as keyof typeof playerState.currentShipFitting;
-                    const index = playerState.currentShipFitting[typedSlot].indexOf(module.id);
-                    if (index !== -1) {
-                        return `${typedSlot}-${index}`;
-                    }
-                }
-                return '';
-            })();
-            const isActive = activeModuleSlots.includes(slotKey);
-
-            // --- Apply Passive and Active Bonuses ---
-
-            // Defenses - Flat bonuses (applied first)
-            if (attrs.shieldHPBonus) stats.defenses.shield.hp += attrs.shieldHPBonus;
-            if (attrs.armorHPBonus) stats.defenses.armor.hp += attrs.armorHPBonus;
-            
-            // Defenses - Accumulate percentage bonuses from passive modules
-            if (attrs.shieldBonus) shieldBonusMultiplier += attrs.shieldBonus;
-            if (attrs.armorBonus) armorBonusMultiplier += attrs.armorBonus;
-            
-            // Defenses - Resistances
-            // Active hardeners
-            if (isActive && attrs.shieldResistanceBonus) {
-                 Object.keys(attrs.shieldResistanceBonus).forEach(dmgType => {
-                    const key = dmgType as keyof typeof stats.defenses.shield;
-                    if (key !== 'hp') {
-                       stats.defenses.shield[key] = 1 - (1 - stats.defenses.shield[key]) * (1 - attrs.shieldResistanceBonus[dmgType]);
-                    }
-                });
-            }
-            // Passive hardeners
-             if (attrs.armorResistanceBonus) { 
-                Object.keys(attrs.armorResistanceBonus).forEach(dmgType => {
-                    const key = dmgType as keyof typeof stats.defenses.armor;
-                     if (key !== 'hp') {
-                        stats.defenses.armor[key] = 1 - (1 - stats.defenses.armor[key]) * (1 - attrs.armorResistanceBonus[dmgType]);
-                     }
-                });
-            }
-            
-            // Capacitor
-            if (attrs.capacitorBonus) capacitorCapacityMultiplier += attrs.capacitorBonus;
-            if (attrs.capacitorRechargeBonus) {
-                // Stacking penalties aren't implemented, so this will be multiplicative
-                capacitorRechargeTimeFactor *= (1 - attrs.capacitorRechargeBonus);
-            }
-
-            // Navigation - only apply if prop mod is active
-            if (isActive && (module.subcategory === 'afterburner' || module.subcategory === 'microwarpdrive') && attrs.velocityBonus) {
-                stats.maxVelocity *= attrs.velocityBonus;
-            }
-        });
-
-        // --- Apply accumulated percentage bonuses ---
-        stats.defenses.shield.hp *= shieldBonusMultiplier;
-        stats.defenses.armor.hp *= armorBonusMultiplier;
-        stats.capacitor.capacity *= capacitorCapacityMultiplier;
-        
-        // --- Final Calculations ---
-        // Recalculate recharge rate based on new capacity and time factor
-        const baseRechargeTime = currentShip.attributes.capacitor / currentShip.attributes.capacitorRechargeRate;
-        const modifiedRechargeTime = baseRechargeTime * capacitorRechargeTimeFactor;
-        
-        stats.capacitor.rechargeTime = modifiedRechargeTime;
-        if (modifiedRechargeTime > 0) {
-            stats.capacitor.rechargeRate = stats.capacitor.capacity / modifiedRechargeTime;
-        } else {
-            stats.capacitor.rechargeRate = Infinity;
-        }
-
-        return stats;
+        return calculateShipStats(currentShip, allFittedModules, activeModuleSlots);
 
     }, [playerState, activeModuleSlots]);
 

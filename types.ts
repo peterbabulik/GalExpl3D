@@ -201,6 +201,7 @@ export interface StationData {
     orbitsPlanetIndex: number;
     orbitDistance: number;
     orbitHeight?: number;
+    type?: 'standard' | 'testing';
 }
 
 export interface SolarSystemData {

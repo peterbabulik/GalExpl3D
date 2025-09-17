@@ -6,7 +6,8 @@ import {
     SHIP_DATA,
     BLUEPRINT_DATA,
     getItemData,
-    DOCKED_BACKGROUND_IMAGES
+    DOCKED_BACKGROUND_IMAGES,
+    SOLAR_SYSTEM_DATA,
 } from './constants';
 import {
     HangarModal,
@@ -20,6 +21,7 @@ import {
 import { AgentInterface } from './GeminiAgent';
 import { SkillsUI } from './SkillsUI';
 import { addSkillXp } from './skills';
+import { TestingGrounds } from './TestingGrounds';
 
 // --- Docked Background Component ---
 const DockedBackground: React.FC = () => {
@@ -86,6 +88,10 @@ export const DockedView: React.FC<DockedViewProps> = ({
     const [agents, setAgents] = useState<Record<string, AgentData>>({});
     const [stationMissions, setStationMissions] = useState<Record<string, MissionData[]>>({});
     
+    const systemData = SOLAR_SYSTEM_DATA[systemId];
+    const stationData = systemData?.station;
+    const isTestingStation = stationData?.name === stationName && stationData.type === 'testing';
+
     // --- HANDLERS ---
     const handleActivateShip = (newShipId: string) => {
         if (!stationId) return;
@@ -296,89 +302,100 @@ export const DockedView: React.FC<DockedViewProps> = ({
         <>
             <DockedBackground />
             
-            <StationInterface 
-                stationName={stationName}
-                onUndock={() => {
-                    setShowStationHelp(false);
-                    onUndock();
-                }}
-                onOpenCrafting={() => { setCraftingOpen(true); setShowStationHelp(false); }}
-                onOpenShipHangar={() => { setShipHangarOpen(true); setShowStationHelp(false); }}
-                onOpenItemHangar={() => { setItemHangarOpen(true); setShowStationHelp(false); }}
-                onOpenFitting={() => { setFittingOpen(true); setShowStationHelp(false); }}
-                onOpenReprocessing={() => { setReprocessingOpen(true); setShowStationHelp(false); }}
-                onOpenMarket={() => { setMarketOpen(true); setShowStationHelp(false); }}
-                onOpenAgent={() => { setAgentInterfaceOpen(true); setShowStationHelp(false); }}
-                onOpenSkills={() => { setSkillsOpen(true); setShowStationHelp(false); }}
-                showHelp={showStationHelp}
-                onToggleHelp={() => setShowStationHelp(prev => !prev)}
-                onSetHomeStation={onSetHomeStation}
-                isHomeStation={isHomeStation}
-            />
-
-            <HangarModal isOpen={isShipHangarOpen} onClose={() => setShipHangarOpen(false)} playerState={playerState} onActivateShip={handleActivateShip} stationId={stationId} />
-            {stationId && <ItemHangarModal isOpen={isItemHangarOpen} onClose={() => setItemHangarOpen(false)} playerState={playerState} setPlayerState={setPlayerState} stationId={stationId} /> }
-
-            {isCraftingOpen && (
-                <CraftingInterface onClose={() => setCraftingOpen(false)} playerState={playerState} onManufacture={handleManufacture} stationId={stationId}/>
-            )}
-            
-            {isFittingOpen && stationId && (
-                <FittingInterface 
-                    isOpen={isFittingOpen} 
-                    onClose={() => setFittingOpen(false)} 
-                    playerState={playerState} 
-                    setPlayerState={setPlayerState} 
-                    stationId={stationId}
-                    onLoadDrone={handleLoadDrone}
-                    onUnloadDrone={handleUnloadDrone}
-                />
-            )}
-
-            {isReprocessingOpen && stationId && (
-                <ReprocessingInterface 
-                    isOpen={isReprocessingOpen} 
-                    onClose={() => setReprocessingOpen(false)} 
-                    playerState={playerState} 
-                    setPlayerState={setPlayerState} 
-                    stationId={stationId} 
-                />
-            )}
-
-            {isMarketOpen && stationId && systemId && (
-                <MarketInterface
-                    isOpen={isMarketOpen}
-                    onClose={() => setMarketOpen(false)}
-                    playerState={playerState}
-                    setPlayerState={setPlayerState}
-                    stationId={stationId}
-                    systemId={systemId}
-                />
-            )}
-            
-            {isAgentInterfaceOpen && stationId && systemId && (
-                <AgentInterface
-                    isOpen={isAgentInterfaceOpen}
-                    onClose={() => setAgentInterfaceOpen(false)}
-                    playerState={playerState}
-                    onAcceptMission={handleAcceptMission}
-                    onCompleteMission={handleCompleteMission}
-                    stationId={stationId}
-                    systemId={systemId}
+            {isTestingStation ? (
+                 <TestingGrounds
                     stationName={stationName}
-                    cachedAgent={agents[stationId]}
-                    setCachedAgent={(agent) => setAgents(a => ({...a, [stationId]: agent}))}
-                    cachedMissions={stationMissions[stationId]}
-                    setCachedMissions={(missions) => setStationMissions(m => ({...m, [stationId]: missions}))}
+                    onUndock={() => {
+                        onUndock();
+                    }}
                 />
-            )}
-            
-            {isSkillsOpen && (
-                <SkillsUI
-                    isOpen={isSkillsOpen}
-                    onClose={() => setSkillsOpen(false)}
-                    playerState={playerState}
-                />
+            ) : (
+                <>
+                    <StationInterface 
+                        stationName={stationName}
+                        onUndock={() => {
+                            setShowStationHelp(false);
+                            onUndock();
+                        }}
+                        onOpenCrafting={() => { setCraftingOpen(true); setShowStationHelp(false); }}
+                        onOpenShipHangar={() => { setShipHangarOpen(true); setShowStationHelp(false); }}
+                        onOpenItemHangar={() => { setItemHangarOpen(true); setShowStationHelp(false); }}
+                        onOpenFitting={() => { setFittingOpen(true); setShowStationHelp(false); }}
+                        onOpenReprocessing={() => { setReprocessingOpen(true); setShowStationHelp(false); }}
+                        onOpenMarket={() => { setMarketOpen(true); setShowStationHelp(false); }}
+                        onOpenAgent={() => { setAgentInterfaceOpen(true); setShowStationHelp(false); }}
+                        onOpenSkills={() => { setSkillsOpen(true); setShowStationHelp(false); }}
+                        showHelp={showStationHelp}
+                        onToggleHelp={() => setShowStationHelp(prev => !prev)}
+                        onSetHomeStation={onSetHomeStation}
+                        isHomeStation={isHomeStation}
+                    />
+
+                    <HangarModal isOpen={isShipHangarOpen} onClose={() => setShipHangarOpen(false)} playerState={playerState} onActivateShip={handleActivateShip} stationId={stationId} />
+                    {stationId && <ItemHangarModal isOpen={isItemHangarOpen} onClose={() => setItemHangarOpen(false)} playerState={playerState} setPlayerState={setPlayerState} stationId={stationId} /> }
+
+                    {isCraftingOpen && (
+                        <CraftingInterface onClose={() => setCraftingOpen(false)} playerState={playerState} onManufacture={handleManufacture} stationId={stationId}/>
+                    )}
+                    
+                    {isFittingOpen && stationId && (
+                        <FittingInterface 
+                            isOpen={isFittingOpen} 
+                            onClose={() => setFittingOpen(false)} 
+                            playerState={playerState} 
+                            setPlayerState={setPlayerState} 
+                            stationId={stationId}
+                            onLoadDrone={handleLoadDrone}
+                            onUnloadDrone={handleUnloadDrone}
+                        />
+                    )}
+
+                    {isReprocessingOpen && stationId && (
+                        <ReprocessingInterface 
+                            isOpen={isReprocessingOpen} 
+                            onClose={() => setReprocessingOpen(false)} 
+                            playerState={playerState} 
+                            setPlayerState={setPlayerState} 
+                            stationId={stationId} 
+                        />
+                    )}
+
+                    {isMarketOpen && stationId && systemId && (
+                        <MarketInterface
+                            isOpen={isMarketOpen}
+                            onClose={() => setMarketOpen(false)}
+                            playerState={playerState}
+                            setPlayerState={setPlayerState}
+                            stationId={stationId}
+                            systemId={systemId}
+                        />
+                    )}
+                    
+                    {isAgentInterfaceOpen && stationId && systemId && (
+                        <AgentInterface
+                            isOpen={isAgentInterfaceOpen}
+                            onClose={() => setAgentInterfaceOpen(false)}
+                            playerState={playerState}
+                            onAcceptMission={handleAcceptMission}
+                            onCompleteMission={handleCompleteMission}
+                            stationId={stationId}
+                            systemId={systemId}
+                            stationName={stationName}
+                            cachedAgent={agents[stationId]}
+                            setCachedAgent={(agent) => setAgents(a => ({...a, [stationId]: agent}))}
+                            cachedMissions={stationMissions[stationId]}
+                            setCachedMissions={(missions) => setStationMissions(m => ({...m, [stationId]: missions}))}
+                        />
+                    )}
+                    
+                    {isSkillsOpen && (
+                        <SkillsUI
+                            isOpen={isSkillsOpen}
+                            onClose={() => setSkillsOpen(false)}
+                            playerState={playerState}
+                        />
+                    )}
+                </>
             )}
         </>
     );

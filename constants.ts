@@ -41,11 +41,14 @@ export const GALAXY_DATA: GalaxyData = {
         { id: 27, name: 'Test', security: 0.4, x: 10, y: -50 },
         { id: 28, name: 'Test2', security: 0.2, x: 10, y: -100 },
         { id: 29, name: 'Test3', security: 0.0, x: 10, y: -150 },
+        // Dev Tool System
+        { id: 1000, name: 'DevTools', security: 1.0, x: 500, y: 500 },
     ],
     jumps: [
         { from: 1, to: 2 },
         { from: 1, to: 3 },
         { from: 1, to: 27 },
+        { from: 1, to: 1000 }, // Jump to DevTools
         { from: 2, to: 3 },
         { from: 2, to: 5 },
         { from: 3, to: 4 },
@@ -93,7 +96,7 @@ export const SOLAR_SYSTEM_DATA: Record<number, SolarSystemData> = {
             { name: 'Earth', type: 'terran', diameter: 12742, distance: 12000, color: 0x4682b4 },
             { name: 'Mars', type: 'rocky', diameter: 6779, distance: 18000, color: 0xff4500 },
         ],
-        station: { name: 'Titan Station', orbitsPlanetIndex: 2, orbitDistance: 400 },
+        station: { name: 'Titan Station', orbitsPlanetIndex: 2, orbitDistance: 400, type: 'standard' },
         asteroidBeltType: 'moderate',
     },
     2: {
@@ -103,7 +106,7 @@ export const SOLAR_SYSTEM_DATA: Record<number, SolarSystemData> = {
              { name: 'Jita IV', type: 'gas', diameter: 50000, distance: 10000, color: 0xFFA500 },
              { name: 'Jita V', type: 'rocky', diameter: 8000, distance: 15000, color: 0x8B4513 },
         ],
-        station: { name: 'Jita IV-4 Trade Hub', orbitsPlanetIndex: 0, orbitDistance: 800 },
+        station: { name: 'Jita IV-4 Trade Hub', orbitsPlanetIndex: 0, orbitDistance: 800, type: 'standard' },
         asteroidBeltType: 'rich',
     },
     3: {
@@ -112,7 +115,7 @@ export const SOLAR_SYSTEM_DATA: Record<number, SolarSystemData> = {
         planets: [
              { name: 'Amarr I', type: 'terran', diameter: 14000, distance: 13000, color: 0xB8860B },
         ],
-        station: { name: 'Amarr Imperial Palace', orbitsPlanetIndex: 0, orbitDistance: 600 },
+        station: { name: 'Amarr Imperial Palace', orbitsPlanetIndex: 0, orbitDistance: 600, type: 'standard' },
         asteroidBeltType: 'moderate',
     },
     4: {
@@ -121,7 +124,7 @@ export const SOLAR_SYSTEM_DATA: Record<number, SolarSystemData> = {
         planets: [
              { name: 'Dodixie IX', type: 'ice', diameter: 22000, distance: 20000, color: 0xADD8E6 },
         ],
-        station: { name: 'Dodixie IX - Moon 20', orbitsPlanetIndex: 0, orbitDistance: 700 },
+        station: { name: 'Dodixie IX - Moon 20', orbitsPlanetIndex: 0, orbitDistance: 700, type: 'standard' },
         asteroidBeltType: 'moderate',
     },
     5: {
@@ -189,7 +192,7 @@ export const SOLAR_SYSTEM_DATA: Record<number, SolarSystemData> = {
         planets: [
             { name: 'Tama V', type: 'barren', diameter: 9000, distance: 14000, color: 0xA0522D },
         ],
-        station: { name: 'Tama V - Moon 1 Smuggler Den', orbitsPlanetIndex: 0, orbitDistance: 300 },
+        station: { name: 'Tama V - Moon 1 Smuggler Den', orbitsPlanetIndex: 0, orbitDistance: 300, type: 'standard' },
         asteroidBeltType: 'rich',
     },
     19: {
@@ -198,7 +201,7 @@ export const SOLAR_SYSTEM_DATA: Record<number, SolarSystemData> = {
         planets: [
             { name: 'LGK-VP I', type: 'lava', diameter: 15000, distance: 16000, color: 0xB22222 },
         ],
-        station: { name: 'LGK-VP - Sansha\'s Nation Fortress', orbitsPlanetIndex: 0, orbitDistance: 600 },
+        station: { name: 'LGK-VP - Sansha\'s Nation Fortress', orbitsPlanetIndex: 0, orbitDistance: 600, type: 'standard' },
         asteroidBeltType: 'exceptional',
     },
     20: {
@@ -208,7 +211,7 @@ export const SOLAR_SYSTEM_DATA: Record<number, SolarSystemData> = {
             { name: 'Venal I', type: 'ice', diameter: 18000, distance: 10000, color: 0x5F9EA0 },
             { name: '6-CZ49', type: 'gas', diameter: 70000, distance: 30000, color: 0x00CED1 },
         ],
-        station: { name: '6-CZ49 - Guristas Assembly Plant', orbitsPlanetIndex: 1, orbitDistance: 500 },
+        station: { name: '6-CZ49 - Guristas Assembly Plant', orbitsPlanetIndex: 1, orbitDistance: 500, type: 'standard' },
         asteroidBeltType: 'exceptional',
     },
     21: {
@@ -217,7 +220,7 @@ export const SOLAR_SYSTEM_DATA: Record<number, SolarSystemData> = {
         planets: [
             { name: 'X-7OMU II', type: 'rocky', diameter: 11000, distance: 12000, color: 0x778899 },
         ],
-        station: { name: 'X-7OMU - Intaki Syndicate Station', orbitsPlanetIndex: 0, orbitDistance: 450 },
+        station: { name: 'X-7OMU - Intaki Syndicate Station', orbitsPlanetIndex: 0, orbitDistance: 450, type: 'standard' },
         asteroidBeltType: 'rich',
     },
     27: {
@@ -248,8 +251,21 @@ export const SOLAR_SYSTEM_DATA: Record<number, SolarSystemData> = {
         planets: [
             { name: 'Pe3k Prime', type: 'terran', diameter: 15000, distance: 10000, color: 0x663399 },
         ],
-        station: { name: "Pe3k's Rest", orbitsPlanetIndex: 0, orbitDistance: 500 },
+        station: { name: "Pe3k's Rest", orbitsPlanetIndex: 0, orbitDistance: 500, type: 'standard' },
         asteroidBeltType: 'sparse',
+    },
+    1000: {
+        name: 'DevTools',
+        star: { color: 0x00FF00, diameter: 1000000 },
+        planets: [
+            { name: 'Sandbox I', type: 'rocky', diameter: 10000, distance: 15000, color: 0xcccccc },
+        ],
+        station: {
+            name: 'Testing Grounds',
+            orbitsPlanetIndex: 0,
+            orbitDistance: 500,
+            type: 'testing'
+        },
     },
 };
 
