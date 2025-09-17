@@ -40,6 +40,77 @@ import { spawnEnemies, updateEnemies, createEnemyLoot, updateEnemyAttacks } from
 import type { Enemy } from './enemies';
 
 
+// --- SAVE DATA HELPERS ---
+
+const compressItems = (items: string[]): Record<string, number> => {
+    return items.reduce((acc, item) => {
+        acc[item] = (acc[item] || 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
+};
+
+const expandItems = (items: Record<string, number> | string[]): string[] => {
+    if (Array.isArray(items)) {
+        return items; // For backward compatibility with old saves
+    }
+    if (!items) return [];
+    return Object.entries(items).flatMap(([itemId, count]) => Array(count).fill(itemId));
+};
+
+const compressPlayerStateForSaving = (playerState: PlayerState): any => {
+    const compressedState = JSON.parse(JSON.stringify(playerState));
+
+    if (compressedState.shipCargo?.items) {
+        compressedState.shipCargo.items = compressItems(compressedState.shipCargo.items);
+    }
+    if (compressedState.assetHangar?.items) {
+        compressedState.assetHangar.items = compressItems(compressedState.assetHangar.items);
+    }
+    if (compressedState.droneBayCargo) {
+        compressedState.droneBayCargo = compressItems(compressedState.droneBayCargo);
+    }
+    if (compressedState.stationHangars) {
+        for (const stationId in compressedState.stationHangars) {
+            if (compressedState.stationHangars[stationId]?.items) {
+                compressedState.stationHangars[stationId].items = compressItems(compressedState.stationHangars[stationId].items);
+            }
+        }
+    }
+    return compressedState;
+};
+
+const expandPlayerStateOnLoad = (savedPlayerState: any): PlayerState => {
+    const expandedState = JSON.parse(JSON.stringify(savedPlayerState));
+    
+    if (expandedState.shipCargo?.items) {
+        expandedState.shipCargo.items = expandItems(expandedState.shipCargo.items);
+    }
+    if (expandedState.assetHangar?.items) {
+        expandedState.assetHangar.items = expandItems(expandedState.assetHangar.items);
+    }
+    if (expandedState.droneBayCargo) {
+        expandedState.droneBayCargo = expandItems(expandedState.droneBayCargo);
+    }
+    if (expandedState.stationHangars) {
+        for (const stationId in expandedState.stationHangars) {
+            if (expandedState.stationHangars[stationId]?.items) {
+                expandedState.stationHangars[stationId].items = expandItems(expandedState.stationHangars[stationId].items);
+            }
+        }
+    }
+    
+    // Ensure all parts of player state are present for old saves
+    if (!expandedState.assetHangar) {
+        expandedState.assetHangar = { items: [], materials: {} };
+    }
+    if (!expandedState.droneBayCargo) {
+        expandedState.droneBayCargo = [];
+    }
+    
+    return expandedState;
+};
+
+
 // --- CONSTANTS ---
 const STAR_SCALE_FACTOR = 1 / 250;
 const PLANET_SCALE_FACTOR = 1 / 25;
@@ -225,21 +296,23 @@ export default function App() {
                 const parsedData = JSON.parse(savedData);
                 if (parsedData.playerState && parsedData.playerState.playerName) {
                     
+                    const expandedPlayerState = expandPlayerStateOnLoad(parsedData.playerState);
+                    
                     // If loading an old save without shipHP, initialize it
-                    if (!parsedData.playerState.shipHP) {
-                        const ship = SHIP_DATA[parsedData.playerState.currentShipId];
-                        parsedData.playerState.shipHP = {
+                    if (!expandedPlayerState.shipHP) {
+                        const ship = SHIP_DATA[expandedPlayerState.currentShipId];
+                        expandedPlayerState.shipHP = {
                             shield: ship.attributes.shield, maxShield: ship.attributes.shield,
                             armor: ship.attributes.armor, maxArmor: ship.attributes.armor,
                             hull: ship.attributes.hull, maxHull: ship.attributes.hull,
                         };
                     }
 
-                    if (!parsedData.playerState.homeStationId) {
-                        parsedData.playerState.homeStationId = 'station_1_Titan_Station';
+                    if (!expandedPlayerState.homeStationId) {
+                        expandedPlayerState.homeStationId = 'station_1_Titan_Station';
                     }
                     
-                    setPlayerState(p => ({...p, ...parsedData.playerState}));
+                    setPlayerState(p => ({...p, ...expandedPlayerState}));
 
                     // Restore location and game state
                     // `activeSystemId` must be set first for the scene to load
@@ -288,7 +361,7 @@ export default function App() {
             if (playerStateRef.current && playerStateRef.current.playerName) {
                 try {
                     const saveData: any = {
-                        playerState: playerStateRef.current,
+                        playerState: compressPlayerStateForSaving(playerStateRef.current),
                         gameState: gameStateRef.current,
                         activeSystemId: activeSystemIdRef.current,
                         shipPosition: null,
