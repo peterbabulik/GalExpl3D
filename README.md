@@ -155,35 +155,29 @@ The project is architected as a modern web application, leveraging a powerful an
 
 GalExpl3D is an actively developed project that has evolved from a simple 3D flight simulation into a feature-rich space sandbox.
 
-### ✅ Implemented Features
+### ✅ **Phase 1: "Orca" - The Sandbox Core (Complete)**
 
-*   **V1.0 - Core Simulation (Initial Release)**
-    *   Single-file HTML/JS application.
-    *   Procedural solar system generation with realistic planetary scale and orbital mechanics.
-    *   First-person, 6-degrees-of-freedom flight model.
+This phase focused on building a complete, feature-rich, single-player sandbox experience. All core systems for gameplay, progression, and UI are fully implemented and playable in the live demo. The successful implementation of **all ship modules and their real-time effects on ship stats** marks the completion of this foundational stage.
 
-*   **V2.0 - The Industrial Core (React Migration)**
-    *   Project migrated to a modern **React + TypeScript** architecture.
-    *   **Player Persistence:** Game state (pilot name, ISK, assets) is now saved to the browser's local storage.
-    *   **Station Services:** Full-screen UI for docking at space stations.
-    *   **Ship Hangar:** UI for managing and activating different ships owned by the player.
-    *   **Item Hangar:** UI for transferring items between a ship's cargo and station storage.
-    *   **Reprocessing:** Service for refining raw ore into usable minerals.
-    *   **Crafting:** A complete manufacturing system to build ships and modules from blueprints using minerals.
-    *   **Marketplace:** Functional market for buying blueprints and selling materials.
-    *   **Ship Fitting:** A comprehensive fitting screen to equip ships with modules, directly impacting their in-space performance.
+### 🚀 **Phase 2: "Helheim" - The Multiplayer Foundation (In Progress)**
 
-*   **V3.0 - A Living Universe**
-    *   **AI-Powered Missions:** Integration with **Google's Gemini AI** to dynamically generate unique mission text and NPC agent backstories.
-    *   **NPC Combat:** Hostile NPC pirates now spawn in lawless systems, creating risk and providing a target for combat.
-    *   **Drone Systems:**
-        *   **Combat Drones:** Players can launch and command a fleet of drones to attack hostile targets.
-        *   **Mining Drones:** Players can deploy drones to automate the process of mining asteroids.
-    *   **Advanced UI:** A hierarchical System Overview panel and a dedicated in-space HUD for managing drones and combat have been implemented.
+The project is now entering the **Helheim** phase. The focus is shifting from adding new client-side features to building the robust, scalable backend required for a true multiplayer experience.
 
-### 🚀 Future Roadmap (The Vision Ahead)
+*   [ ] **Server Implementation:** Developing a dedicated Node.js backend to act as the authoritative server for the game world.
+*   [ ] **Database Integration:** Storing all persistent player and world data in a database (e.g., PostgreSQL or MongoDB).
+*   [ ] **Real-Time Communication:** Integrating WebSockets (e.g., using Socket.IO) to synchronize player actions and world state.
+*   [ ] **Client/Server Authority:** Migrating all critical game logic (combat, inventory, market) from the client to the server to create a secure, cheat-resistant environment.
 
-The current foundation is robust, paving the way for even deeper and more emergent gameplay. The next major phases of development are focused on creating a truly dynamic, shared universe.
+### 🚀 **Phase 3: "Valhalla" - The Shared Universe (The Vision Ahead)**
+
+With the backend architecture in place, this phase will focus on implementing the features that create a living, breathing, shared world for all players.
+
+*   [ ] **Full Multiplayer:** Enabling players to see, interact with, and fly alongside each other in real-time.
+*   [ ] **Player-to-Player Trading:** Converting the market into a fully player-driven economy with buy and sell orders.
+*   [ ] **Corporate & Fleet Systems:** Allowing players to form corporations, manage shared assets, and fly in fleets.
+*   [ ] **Player vs. Player (PvP) Combat:** Implementing combat mechanics that allow for PvP engagements.
+*   [ ] **Visual Polish:** Adding 3D models for all ships, drones, and structures.
+*   [ ] **(Experimental) Blockchain Integration:** Exploring the potential to move core game assets onto a blockchain as NFTs, giving players true ownership of their digital assets.
 
 *   **Phase 1: Deepening the Simulation**
     *   [ ] **Player Skill System:** Adding a character skill tree that allows players to specialize in piloting, industry, combat, and more, providing long-term progression.
@@ -266,4 +260,5 @@ The current foundation is robust, paving the way for even deeper and more emerge
 *   **Advanced In-Game Console & Feedback:**
     *   Stay informed with a classic, in-game **console** that provides real-time text feedback on all major actions, from mining yields to warp drive activations.
     *   A polished, icon-driven HUD provides at-a-glance status of your ship's modules and active drones.
+
 
