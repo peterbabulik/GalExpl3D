@@ -3,7 +3,7 @@ import type { Module, Ammunition, ItemData, Drone } from './types';
 
 export const MODULE_DATA: Record<string, Module> = {
     // ==================== HIGH SLOT MODULES ====================
-    
+
     'mod_125mm_autocannon_i': {
         id: 'mod_125mm_autocannon_i',
         name: '125mm Gatling AutoCannon I',
@@ -200,6 +200,7 @@ export const MODULE_DATA: Record<string, Module> = {
         attributes: {
             damage: 15,
             rateOfFire: 4.0,
+            optimalRange: 24000,
             missileVelocity: 2250,
             explosionRadius: 20,
             explosionVelocity: 150,
@@ -238,13 +239,14 @@ export const MODULE_DATA: Record<string, Module> = {
         attributes: {
             damage: 25,
             rateOfFire: 6.0,
+            optimalRange: 12000,
             missileVelocity: 3750,
             explosionRadius: 40,
             explosionVelocity: 170,
             powerGridUsage: 4,
             cpuUsage: 25,
             capacitorUsage: 0,
-            ammoType: 'light_missile'
+            ammoType: 'rocket'
         },
         damageType: {
             kinetic: 0.25,
@@ -356,9 +358,9 @@ export const MODULE_DATA: Record<string, Module> = {
             'min_nocxium': 100
         }
     },
-    
+
     // ==================== MEDIUM SLOT MODULES ====================
-    
+
     'mod_shield_extender_i': {
         id: 'mod_shield_extender_i',
         name: 'Small Shield Extender I',
@@ -570,7 +572,7 @@ export const MODULE_DATA: Record<string, Module> = {
             'min_isogen': 10
         }
     },
-    
+
     // ==================== LOW SLOT MODULES ====================
     'mod_drone_bay_s': {
         id: 'mod_drone_bay_s',
@@ -882,9 +884,9 @@ export const MODULE_DATA: Record<string, Module> = {
             'min_nocxium': 2
         }
     },
-    
+
     // ==================== RIG SLOT MODULES ====================
-    
+
     'mod_cdfe_rig_i': {
         id: 'mod_cdfe_rig_i',
         name: 'Small Core Defense Field Extender I',
