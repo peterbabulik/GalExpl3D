@@ -179,20 +179,6 @@ With the backend architecture in place, this phase will focus on implementing th
 *   [ ] **Visual Polish:** Adding 3D models for all ships, drones, and structures.
 *   [ ] **(Experimental) Blockchain Integration:** Exploring the potential to move core game assets onto a blockchain as NFTs, giving players true ownership of their digital assets.
 
-*   **Phase 1: Deepening the Simulation**
-    *   [ ] **Player Skill System:** Adding a character skill tree that allows players to specialize in piloting, industry, combat, and more, providing long-term progression.
-    *   [ ] **Loot & Salvaging:** Expanding NPC loot tables to include modules and rare items. Introducing salvaging gameplay to recover components from wrecks.
-    *   [ ] **Visual Polish:** Adding 3D models for all ships, drones, and structures to replace the current placeholder geometry.
-
-*   **Phase 2: The Multiplayer Backend**
-    *   [ ] **Server Implementation:** Developing a dedicated Node.js backend to act as the authoritative server for the game world.
-    *   [ ] **Database Integration:** Storing all persistent player and world data (inventories, market orders, ship locations) in a database.
-    *   **Real-Time Communication:** Integrating WebSockets (e.g., using Socket.IO) to synchronize player actions and world state between all connected clients.
-
-*   **Phase 3: A Player-Driven Universe**
-    *   [ ] **Player-to-Player Trading:** Converting the NPC market into a fully player-driven market with buy and sell orders.
-    *   [ ] **Corporate & Fleet Systems:** Allowing players to form corporations, manage shared assets, and fly in fleets.
-    *   [ ] **(Experimental) Blockchain Integration:** Exploring the potential to move core game assets (ships, rare blueprints) onto a blockchain as NFTs, giving players true ownership of their digital assets.
 
 <div align="center">
 <img width="1200" alt="GHBanner" src="https://github.com/peterbabulik/GalExpl3D/blob/main/Pictures/WeWantYou9.png" />
