@@ -22,7 +22,8 @@ export const MODULE_DATA: Record<string, Module> = {
             tracking: 0.5,
             powerGridUsage: 4,
             cpuUsage: 8,
-            capacitorUsage: 0
+            capacitorUsage: 0,
+            ammoType: 'projectile'
         },
         damageType: {
             kinetic: 0.5,
@@ -57,7 +58,8 @@ export const MODULE_DATA: Record<string, Module> = {
             tracking: 0.12,
             powerGridUsage: 8,
             cpuUsage: 12,
-            capacitorUsage: 0
+            capacitorUsage: 0,
+            ammoType: 'projectile'
         },
         damageType: {
             kinetic: 0.5,
@@ -93,7 +95,8 @@ export const MODULE_DATA: Record<string, Module> = {
             tracking: 0.08,
             powerGridUsage: 6,
             cpuUsage: 15,
-            capacitorUsage: 2
+            capacitorUsage: 2,
+            ammoType: 'hybrid'
         },
         damageType: {
             kinetic: 0.5,
@@ -129,7 +132,8 @@ export const MODULE_DATA: Record<string, Module> = {
             tracking: 0.4,
             powerGridUsage: 5,
             cpuUsage: 10,
-            capacitorUsage: 1.5
+            capacitorUsage: 1.5,
+            ammoType: 'hybrid'
         },
         damageType: {
             kinetic: 0.5,
@@ -201,7 +205,8 @@ export const MODULE_DATA: Record<string, Module> = {
             explosionVelocity: 150,
             powerGridUsage: 3,
             cpuUsage: 20,
-            capacitorUsage: 0
+            capacitorUsage: 0,
+            ammoType: 'rocket'
         },
         damageType: {
             kinetic: 0.25,
@@ -238,7 +243,8 @@ export const MODULE_DATA: Record<string, Module> = {
             explosionVelocity: 170,
             powerGridUsage: 4,
             cpuUsage: 25,
-            capacitorUsage: 0
+            capacitorUsage: 0,
+            ammoType: 'light_missile'
         },
         damageType: {
             kinetic: 0.25,
@@ -971,7 +977,7 @@ const AMMUNITION_DATA: Record<string, Ammunition> = {
         type: 'projectile',
         size: 'small',
         basePrice: 10,
-        damageModifier: 1.0,
+        damage: 8.0,
         rangeModifier: 0.5,
         damageType: {
             explosive: 0.9,
@@ -989,7 +995,7 @@ const AMMUNITION_DATA: Record<string, Ammunition> = {
         type: 'projectile',
         size: 'small',
         basePrice: 15,
-        damageModifier: 1.1,
+        damage: 8.8,
         rangeModifier: 0.375,
         damageType: {
             thermal: 0.8,
@@ -1007,7 +1013,7 @@ const AMMUNITION_DATA: Record<string, Ammunition> = {
         type: 'hybrid',
         size: 'small',
         basePrice: 20,
-        damageModifier: 1.5,
+        damage: 18.0,
         rangeModifier: 0.5,
         damageType: {
             kinetic: 0.5,
@@ -1026,7 +1032,7 @@ const AMMUNITION_DATA: Record<string, Ammunition> = {
         type: 'hybrid',
         size: 'small',
         basePrice: 10,
-        damageModifier: 0.8,
+        damage: 9.6,
         rangeModifier: 1.6,
         damageType: {
             kinetic: 0.5,

@@ -125,6 +125,8 @@ export interface PlayerState {
         maxArmor: number;
         hull: number;
         maxHull: number;
+        capacitor: number;
+        maxCapacitor: number;
     };
     currentShipFitting: ShipFitting;
     shipCargo: StorageLocation;
@@ -149,9 +151,11 @@ export interface MissionData {
     id: string; // e.g., stationId-agentName-missionTitle-timestamp
     agent: AgentData;
     stationId: string;
+    type: 'mining' | 'combat';
     title: string;
     description: string;
-    objectives: Record<string, number>; // e.g., { 'ore_veldspar': 5000 }
+    objectives: Record<string, number>; // e.g., { 'ore_veldspar': 5000 } or { 'destroy_pirate_small': 3 }
+    progress?: Record<string, number>;
     rewards: {
         isk?: number;
         items?: { id: string; quantity: number }[];
@@ -326,6 +330,7 @@ export interface Ship extends BaseItem {
         armor: number;
         shield: number;
         capacitor: number;
+        capacitorRechargeRate: number; // in GJ/sec
         powerGrid: number;
         cpu: number;
         speed: number;

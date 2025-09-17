@@ -173,6 +173,7 @@ export const ShipStatsUI: React.FC<{ playerState: PlayerState, shipHP: PlayerSta
                 <HPBar current={shipHP.shield} max={shipHP.maxShield} color="bg-cyan-500" label="Shield" />
                 <HPBar current={shipHP.armor} max={shipHP.maxArmor} color="bg-gray-400" label="Armor" />
                 <HPBar current={shipHP.hull} max={shipHP.maxHull} color="bg-yellow-500" label="Hull" />
+                <HPBar current={shipHP.capacitor} max={shipHP.maxCapacitor} color="bg-purple-500" label="Capacitor" />
                 
                 <div className="border-t border-gray-700 mt-2 pt-1">
                     <div className="flex justify-between py-0.5 px-1">
@@ -336,13 +337,22 @@ export const ModuleBarUI: React.FC<{
         const activeStyle = isActive ? "!border-green-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" : "";
         const deactivatedStyle = isDeactivated ? "opacity-40 !bg-red-900/50" : "";
 
+        const handleMouseEnter = (e: React.MouseEvent) => {
+            if (module) {
+                let content = `<strong>${module.name}</strong>`;
+                if (module.attributes.capacitorUsage) {
+                    content += `<br/>Capacitor: ${module.attributes.capacitorUsage} GJ`;
+                }
+                setTooltip(content, e);
+            }
+        };
 
         return (
             <div
                 key={slotKey}
                 className={`${baseStyle} ${module ? filledStyle : emptyStyle} ${activeStyle} ${deactivatedStyle}`}
                 onClick={() => module && onSlotClick(slotType, slotIndex)}
-                onMouseEnter={(e) => module && setTooltip(module.name, e)}
+                onMouseEnter={handleMouseEnter}
                 onMouseLeave={clearTooltip}
             >
                 {module && <ModuleIcon module={module} />}

@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
 import { GameState } from './types';
-import type { PlayerState, TooltipData, Target, TargetData, DockingData, NavObject, NavPanelItem, StorageLocation, Module, Ore, AgentData, MissionData, SolarSystemData, Drone, AnyItem, ConsoleMessage, ConsoleMessageType } from './types';
+import type { PlayerState, TooltipData, Target, TargetData, DockingData, NavObject, NavPanelItem, StorageLocation, Module, Ore, AgentData, MissionData, SolarSystemData, Drone, AnyItem, ConsoleMessage, ConsoleMessageType, Ammunition } from './types';
 import { 
     GALAXY_DATA,
     SOLAR_SYSTEM_DATA,
@@ -28,7 +27,7 @@ import {
 } from './InFlightUI';
 import { DockedView } from './DockedView';
 // FIX: Import SkillsUI component to render the skills modal.
-import { addSkillXp } from './skills';
+import { SKILL_DATA, addSkillXp } from './skills';
 import { ConsoleUI } from './Console';
 
 import { ASTEROID_BELT_TYPES } from './ores';
@@ -120,6 +119,14 @@ const MINING_RANGE = 1500;
 const LOOT_RANGE = 2500;
 const ENEMY_ATTACK_COOLDOWN = 3000; // ms
 const MAX_CONSOLE_MESSAGES = 100;
+
+const WEAPON_SUBCATEGORY_TO_SKILL_MAP: Record<string, string> = {
+    'projectile': 'skill_small_projectiles',
+    'energy': 'skill_small_lasers',
+    'hybrid': 'skill_small_hybrids',
+    'missile': 'skill_missiles',
+};
+
 
 interface MiningState {
     targetId: string;
@@ -305,6 +312,8 @@ export default function App() {
                             shield: ship.attributes.shield, maxShield: ship.attributes.shield,
                             armor: ship.attributes.armor, maxArmor: ship.attributes.armor,
                             hull: ship.attributes.hull, maxHull: ship.attributes.hull,
+                            // FIX: Added missing capacitor properties to align with the PlayerState['shipHP'] type.
+                            capacitor: ship.attributes.capacitor, maxCapacitor: ship.attributes.capacitor,
                         };
                     }
 
@@ -431,6 +440,8 @@ export default function App() {
                         shield: currentShip.attributes.shield, maxShield: currentShip.attributes.shield,
                         armor: currentShip.attributes.armor, maxArmor: currentShip.attributes.armor,
                         hull: currentShip.attributes.hull, maxHull: currentShip.attributes.hull,
+                        // FIX: Added missing capacitor properties to fully repair the ship and align with the PlayerState['shipHP'] type.
+                        capacitor: currentShip.attributes.capacitor, maxCapacitor: currentShip.attributes.capacitor,
                     }
                 };
             });
@@ -649,10 +660,15 @@ export default function App() {
     const fireWeapons = useCallback(() => {
         const { selectedTarget } = targetDataRef.current;
         if (!selectedTarget || selectedTarget.type !== 'pirate' || !selectedTarget.hp) return;
-
+    
         const now = Date.now();
         let totalDamageThisTick = 0;
-
+        let capacitorConsumedThisTick = 0;
+    
+        const ammoConsumedThisTick: Record<string, number> = {};
+        const xpGainsThisTick: Record<string, number> = {};
+        const ammoAvailableInCargo = { ...playerStateRef.current.shipCargo.materials };
+    
         const fittedWeapons = playerStateRef.current.currentShipFitting.high
             .map((id, index) => ({ id, slotKey: `high-${index}` }))
             .filter(item => {
@@ -661,25 +677,104 @@ export default function App() {
                 return !!moduleData && ['projectile', 'hybrid', 'energy', 'missile'].includes(moduleData.subcategory);
             })
             .map(item => ({ module: getItemData(item.id) as Module, slotKey: item.slotKey }));
-
+    
         for (const { module, slotKey } of fittedWeapons) {
             const lastFired = weaponCycleTimersRef.current[slotKey] || 0;
             const cycleTime = (module.attributes.rateOfFire || 5) * 1000;
-
-            if (now - lastFired >= cycleTime) {
-                const range = module.attributes.optimalRange || 0;
-                if (selectedTarget.distance <= range) {
-                    weaponCycleTimersRef.current[slotKey] = now;
-                    totalDamageThisTick += module.attributes.damage || 0;
-
-                    setActiveModuleSlots(prev => [...new Set([...prev, slotKey])]);
-                    setTimeout(() => {
-                        setActiveModuleSlots(prev => prev.filter(s => s !== slotKey));
-                    }, 300);
-                }
+    
+            if (now - lastFired < cycleTime) continue;
+            
+            let range = 0;
+            if (module.subcategory === 'missile') {
+                const missileVelocity = module.attributes.missileVelocity || 2000;
+                const flightTime = 10; // Default 10 seconds
+                range = missileVelocity * flightTime;
+            } else {
+                range = module.attributes.optimalRange || 0;
             }
-        }
+    
+            if (selectedTarget.distance > range) continue;
 
+            const capUsage = module.attributes.capacitorUsage || 0;
+            if (capUsage > 0) {
+                if ((playerStateRef.current.shipHP.capacitor - capacitorConsumedThisTick) < capUsage) {
+                    addConsoleMessage(`${module.name} failed to fire: insufficient capacitor.`, 'system');
+                    continue; // Not enough cap
+                }
+                capacitorConsumedThisTick += capUsage;
+            }
+            
+            let damagePerShot = 0;
+    
+            // Handle ammo consumption and damage calculation based on weapon type
+            if (module.subcategory !== 'energy') {
+                const ammoType = module.attributes.ammoType;
+                if (!ammoType) {
+                    console.warn(`Weapon ${module.name} has no ammoType defined.`);
+                    continue;
+                }
+    
+                const ammoIdToUse = Object.keys(ammoAvailableInCargo).find(id => {
+                    const itemData = getItemData(id);
+                    return itemData?.category === 'Ammunition' && (itemData as Ammunition).type === ammoType && ammoAvailableInCargo[id] > 0;
+                });
+    
+                if (!ammoIdToUse) {
+                    continue; // Out of ammo for this weapon type
+                }
+    
+                // Consume ammo from our temporary copy
+                ammoAvailableInCargo[ammoIdToUse]--;
+                ammoConsumedThisTick[ammoIdToUse] = (ammoConsumedThisTick[ammoIdToUse] || 0) + 1;
+                
+                const ammoData = getItemData(ammoIdToUse) as Ammunition;
+                
+                // The damage for all ammo-based weapons comes from the ammo itself.
+                damagePerShot = ammoData?.damage || 0;
+            } else { // Energy weapons
+                damagePerShot = module.attributes.damage || 0;
+            }
+            
+            weaponCycleTimersRef.current[slotKey] = now;
+            totalDamageThisTick += damagePerShot;
+
+            // Grant skill XP for firing
+            const skillId = WEAPON_SUBCATEGORY_TO_SKILL_MAP[module.subcategory];
+            if (skillId) {
+                xpGainsThisTick[skillId] = (xpGainsThisTick[skillId] || 0) + 10; // 10 XP per shot
+            }
+    
+            setActiveModuleSlots(prev => [...new Set([...prev, slotKey])]);
+            setTimeout(() => {
+                setActiveModuleSlots(prev => prev.filter(s => s !== slotKey));
+            }, 300);
+        }
+    
+        if (Object.keys(ammoConsumedThisTick).length > 0 || Object.keys(xpGainsThisTick).length > 0 || capacitorConsumedThisTick > 0) {
+            setPlayerState(p => {
+                let newState = JSON.parse(JSON.stringify(p));
+                for (const ammoId in ammoConsumedThisTick) {
+                    const count = ammoConsumedThisTick[ammoId];
+                    if (newState.shipCargo.materials[ammoId]) {
+                        newState.shipCargo.materials[ammoId] -= count;
+                        if (newState.shipCargo.materials[ammoId] <= 0) {
+                            delete newState.shipCargo.materials[ammoId];
+                            addConsoleMessage(`${getItemData(ammoId)?.name} depleted.`, 'system');
+                        }
+                    }
+                }
+
+                if (capacitorConsumedThisTick > 0) {
+                    newState.shipHP.capacitor = Math.max(0, newState.shipHP.capacitor - capacitorConsumedThisTick);
+                }
+
+                for (const skillId in xpGainsThisTick) {
+                    newState = addSkillXp(newState, skillId, xpGainsThisTick[skillId]);
+                }
+                return newState;
+            });
+        }
+    
         if (totalDamageThisTick > 0) {
             addConsoleMessage(`Dealt ${totalDamageThisTick.toFixed(0)} damage to ${selectedTarget.name}.`, 'damage_out');
             
@@ -828,6 +923,8 @@ export default function App() {
                     shield: rookieShipData.attributes.shield, maxShield: rookieShipData.attributes.shield,
                     armor: rookieShipData.attributes.armor, maxArmor: rookieShipData.attributes.armor,
                     hull: rookieShipData.attributes.hull, maxHull: rookieShipData.attributes.hull,
+                    // FIX: Added missing capacitor properties to correctly initialize the new ship's HP state.
+                    capacitor: rookieShipData.attributes.capacitor, maxCapacitor: rookieShipData.attributes.capacitor,
                 };
                 newState.shipCargo = { items: [], materials: {} };
                 newState.droneBayCargo = [];
@@ -944,36 +1041,11 @@ export default function App() {
             const enemy = gameDataRef.current.enemies[enemyIndex];
             const lastPosition = enemy.object3D.position.clone();
             
-            // 1. Add bounty and skill XP
+            // 1. Add bounty
             setPlayerState(p => {
                 const bounty = enemy.bounty;
                 addConsoleMessage(`Received ${bounty.toLocaleString()} ISK bounty for destroying ${enemy.object3D.userData.name}.`, 'bounty');
-                let finalState = { ...p, isk: p.isk + bounty };
-        
-                const xpFromBounty = Math.ceil(bounty / 50);
-        
-                const skillsToTrain = new Set<string>();
-                const fittedHighSlots = p.currentShipFitting.high.filter((id): id is string => !!id);
-                fittedHighSlots.forEach(moduleId => {
-                    const module = getItemData(moduleId) as Module;
-                    if (module) {
-                        switch (module.subcategory) {
-                            case 'projectile': skillsToTrain.add('skill_small_projectiles'); break;
-                            case 'energy': skillsToTrain.add('skill_small_lasers'); break;
-                            case 'hybrid': skillsToTrain.add('skill_small_hybrids'); break;
-                            case 'missile': skillsToTrain.add('skill_missiles'); break;
-                        }
-                    }
-                });
-                if (droneStatus === 'attacking') {
-                    skillsToTrain.add('skill_drone_combat');
-                }
-        
-                skillsToTrain.forEach(skillId => {
-                    finalState = addSkillXp(finalState, skillId, xpFromBounty);
-                });
-                
-                return finalState;
+                return { ...p, isk: p.isk + bounty };
             });
 
             // 2. Create loot wreck
@@ -990,7 +1062,7 @@ export default function App() {
 
             handleDeselectTarget();
         }
-    }, [targetData.selectedTarget, handleDeselectTarget, droneStatus, addConsoleMessage]);
+    }, [targetData.selectedTarget, handleDeselectTarget, addConsoleMessage]);
 
 
      // --- DRONE LOGIC ---
@@ -1068,6 +1140,8 @@ export default function App() {
             });
 
             if (totalDroneDamage > 0) {
+                setPlayerState(p => addSkillXp(p, 'skill_drone_combat', 20)); // 20xp per second
+                
                 setTargetData(t => {
                     if (!t.selectedTarget || t.selectedTarget.type !== 'pirate' || !t.selectedTarget.hp) {
                         return t;
@@ -1102,12 +1176,27 @@ export default function App() {
     
 
     const handleToggleModule = useCallback((slotKey: string) => {
-        setActiveModuleSlots(prev => 
-            prev.includes(slotKey)
-                ? prev.filter(s => s !== slotKey)
-                : [...prev, slotKey]
-        );
-    }, []);
+        setActiveModuleSlots(prev => {
+            const isActivating = !prev.includes(slotKey);
+            if (isActivating) {
+                const [slotType, slotIndexStr] = slotKey.split('-');
+                const slotIndex = parseInt(slotIndexStr, 10);
+                const fitting = playerStateRef.current.currentShipFitting[slotType as keyof typeof playerStateRef.current.currentShipFitting];
+                const moduleId = fitting?.[slotIndex];
+                if (moduleId) {
+                    const module = getItemData(moduleId) as Module;
+                    const capUsage = module?.attributes?.capacitorUsage || 0;
+                    if (capUsage > 0 && playerStateRef.current.shipHP.capacitor < capUsage) {
+                        addConsoleMessage(`${module.name} failed to activate: insufficient capacitor.`, 'system');
+                        return prev; // Not enough capacitor to activate
+                    }
+                }
+            }
+            return isActivating
+                ? [...prev, slotKey]
+                : prev.filter(s => s !== slotKey)
+        });
+    }, [addConsoleMessage]);
     
     const handleToggleWeaponGroup = useCallback(() => {
         const highSlots = playerStateRef.current.currentShipFitting.high;
@@ -1597,7 +1686,26 @@ export default function App() {
 
             const baseSpeed = currentShip.attributes.speed;
             const agility = currentShip.attributes.agility;
-            const finalSpeed = baseSpeed * speedMultiplier;
+            
+            let propModMultiplier = 1.0;
+            const pState = playerStateRef.current;
+            activeModuleSlotsRef.current.forEach(slotKey => {
+                const [slotType, slotIndexStr] = slotKey.split('-');
+                const slotIndex = parseInt(slotIndexStr, 10);
+                const fitting = pState.currentShipFitting[slotType as keyof typeof pState.currentShipFitting];
+                if (fitting) {
+                    const moduleId = fitting[slotIndex];
+                    if (moduleId) {
+                        const moduleData = getItemData(moduleId) as Module;
+                        if (moduleData && (moduleData.subcategory === 'afterburner' || moduleData.subcategory === 'microwarpdrive')) {
+                            propModMultiplier = moduleData.attributes.velocityBonus;
+                        }
+                    }
+                }
+            });
+
+            const finalSpeed = baseSpeed * speedMultiplier * propModMultiplier;
+
 
             // Combine keyboard and joystick inputs
             const forwardInput = (keysRef.current['KeyW'] ? 1 : 0) - (keysRef.current['KeyS'] ? 1 : 0);
@@ -1848,19 +1956,42 @@ export default function App() {
         joystickVecRef.current = joystickVector;
     }, [joystickVector]);
 
-    // Effect for active module cycles (repairers, boosters)
+    // Effect for capacitor recharge
+    useEffect(() => {
+        const rechargeInterval = setInterval(() => {
+            if (gameStateRef.current === GameState.SOLAR_SYSTEM) {
+                setPlayerState(p => {
+                    const shipData = SHIP_DATA[p.currentShipId];
+                    if (!shipData) return p;
+
+                    const rechargeAmount = shipData.attributes.capacitorRechargeRate;
+                    const newCapacitor = Math.min(
+                        p.shipHP.maxCapacitor,
+                        p.shipHP.capacitor + rechargeAmount
+                    );
+                    
+                    if (newCapacitor === p.shipHP.capacitor) return p;
+
+                    return { ...p, shipHP: { ...p.shipHP, capacitor: newCapacitor }};
+                });
+            }
+        }, 1000); // Recharge every second
+        return () => clearInterval(rechargeInterval);
+    }, []);
+
+    // Effect for active module cycles (repairers, boosters, prop mods)
     useEffect(() => {
         const cycleInterval = setInterval(() => {
             const pState = playerStateRef.current;
-            // FIX: Use activeModuleSlotsRef to access the latest state of active modules.
             if (gameStateRef.current !== GameState.SOLAR_SYSTEM || activeModuleSlotsRef.current.length === 0) {
                 return;
             }
     
             const now = Date.now();
             let updatedHP: PlayerState['shipHP'] | null = null;
+            const xpGains: Record<string, number> = {};
+            const modulesToDeactivate: string[] = [];
     
-            // FIX: Use activeModuleSlotsRef to access the latest state of active modules.
             activeModuleSlotsRef.current.forEach(slotKey => {
                 const [slotType, slotIndexStr] = slotKey.split('-');
                 const slotIndex = parseInt(slotIndexStr, 10);
@@ -1878,30 +2009,53 @@ export default function App() {
                 const cycleDuration = moduleData.attributes.cycleTime * 1000;
     
                 if (now - lastCycleTime >= cycleDuration) {
+                    const capacitorUsage = moduleData.attributes.capacitorUsage || 0;
+
+                    if (capacitorUsage > 0) {
+                        const currentCap = updatedHP?.capacitor ?? pState.shipHP.capacitor;
+                        if (currentCap < capacitorUsage) {
+                            addConsoleMessage(`${moduleData.name} deactivated: insufficient capacitor.`, 'system');
+                            modulesToDeactivate.push(slotKey);
+                            return; // Skip this module cycle
+                        }
+                        if (!updatedHP) updatedHP = { ...pState.shipHP };
+                        updatedHP.capacitor = Math.max(0, updatedHP.capacitor - capacitorUsage);
+                    }
+
                     moduleCycleTimersRef.current[slotKey] = now;
                     
                     const { shieldBoostAmount, armorRepairAmount } = moduleData.attributes;
     
                     if (shieldBoostAmount || armorRepairAmount) {
-                         if (!updatedHP) {
-                            updatedHP = { ...pState.shipHP };
-                        }
+                         if (!updatedHP) updatedHP = { ...pState.shipHP };
                     }
                    
                     if (shieldBoostAmount && updatedHP && updatedHP.shield < updatedHP.maxShield) {
                         updatedHP.shield = Math.min(updatedHP.maxShield, updatedHP.shield + shieldBoostAmount);
                         addConsoleMessage(`Shield booster repaired ${shieldBoostAmount} HP.`, 'repair');
+                        xpGains['skill_shield_operation'] = (xpGains['skill_shield_operation'] || 0) + 30;
                     }
                     
                     if (armorRepairAmount && updatedHP && updatedHP.armor < updatedHP.maxArmor) {
                         updatedHP.armor = Math.min(updatedHP.maxArmor, updatedHP.armor + armorRepairAmount);
                         addConsoleMessage(`Armor repairer repaired ${armorRepairAmount} HP.`, 'repair');
+                        xpGains['skill_armor_repair'] = (xpGains['skill_armor_repair'] || 0) + 30;
                     }
                 }
             });
             
-            if (updatedHP) {
-                setPlayerState(p => ({ ...p, shipHP: updatedHP as PlayerState['shipHP'] }));
+            if (modulesToDeactivate.length > 0) {
+                setActiveModuleSlots(prev => prev.filter(s => !modulesToDeactivate.includes(s)));
+            }
+
+            if (updatedHP || Object.keys(xpGains).length > 0) {
+                setPlayerState(p => {
+                    let newState = updatedHP ? { ...p, shipHP: updatedHP as PlayerState['shipHP'] } : { ...p };
+                    for (const skillId in xpGains) {
+                        newState = addSkillXp(newState, skillId, xpGains[skillId]);
+                    }
+                    return newState;
+                });
             }
     
         }, 250); // Check every quarter second
@@ -1909,7 +2063,7 @@ export default function App() {
         return () => {
             clearInterval(cycleInterval);
         };
-    }, [addConsoleMessage]); // Run only once on mount
+    }, [addConsoleMessage]);
 
     const isTouchDevice = 'ontouchstart' in window;
     const currentShip = SHIP_DATA[playerState.currentShipId];
@@ -2066,7 +2220,7 @@ export default function App() {
                         </div>
                     )}
 
-                    {gameState === GameState.SOLAR_SYSTEM && <ConsoleUI messages={consoleMessages} />}
+                    {gameState === GameState.SOLAR_SYSTEM && <ConsoleUI messages={consoleMessages} playerState={playerState} activeModuleSlots={activeModuleSlots} />}
 
                     {gameState === GameState.SOLAR_SYSTEM && isTouchDevice && <VirtualJoystick onMove={setJoystickVector} />}
 

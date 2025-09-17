@@ -5,6 +5,7 @@ import { SHIP_DATA, getItemData } from './constants';
 export interface Enemy {
     object3D: THREE.Object3D;
     shipData: Ship;
+    type: 'small' | 'medium' | 'large';
     fitting: {
         high: (string | null)[];
     };
@@ -26,13 +27,14 @@ const APPROACH_DISTANCE = 1000;
 const ENEMY_SPEED = 150; // Slower than player base speed
 const ENEMY_AGILITY = 4.0; // Worse than rookie ship
 
+export const systemPirateConfig: Record<number, { type: 'small' | 'medium' | 'large', count: number }> = {
+    27: { type: 'small', count: 3 },  // Test
+    28: { type: 'medium', count: 2 }, // Test2
+    29: { type: 'large', count: 1 },  // Test3
+};
+
 export function spawnEnemies(scene: THREE.Scene, systemId: number): Enemy[] {
     const enemies: Enemy[] = [];
-    const systemPirateConfig = {
-        27: { type: 'small', count: 3 },  // Test
-        28: { type: 'medium', count: 2 }, // Test2
-        29: { type: 'large', count: 1 },  // Test3
-    };
 
     const config = systemPirateConfig[systemId];
     if (!config) {
@@ -104,6 +106,7 @@ export function spawnEnemies(scene: THREE.Scene, systemId: number): Enemy[] {
         enemies.push({
             object3D: enemyMesh,
             shipData: shipData,
+            type: config.type,
             fitting: fitting,
             cargo: cargo,
             aiState: 'approaching',

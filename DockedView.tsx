@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import type { PlayerState, AgentData, MissionData, Drone } from './types';
 import { 
@@ -140,6 +141,7 @@ export const DockedView: React.FC<DockedViewProps> = ({
                 shield: newShipData.attributes.shield, maxShield: newShipData.attributes.shield,
                 armor: newShipData.attributes.armor, maxArmor: newShipData.attributes.armor,
                 hull: newShipData.attributes.hull, maxHull: newShipData.attributes.hull,
+                capacitor: newShipData.attributes.capacitor, maxCapacitor: newShipData.attributes.capacitor,
             };
             
             // Reset ship cargo for the new ship

@@ -1,7 +1,3 @@
-
-
-
-
 import type { Ship, ShipClass, ShipSkill } from './types';
 
 // Ship Data - EVE Online Inspired
@@ -28,6 +24,7 @@ export const ShipData: Record<string, Ship> = {
             armor: 350,
             shield: 350,
             capacitor: 250,
+            capacitorRechargeRate: 250 / 300, // Full recharge in 5 mins
             powerGrid: 37,
             cpu: 125,
             speed: 300,
@@ -66,6 +63,7 @@ export const ShipData: Record<string, Ship> = {
             armor: 400,
             shield: 450,
             capacitor: 275,
+            capacitorRechargeRate: 275 / 300,
             powerGrid: 45,
             cpu: 150,
             speed: 365,
@@ -108,6 +106,7 @@ export const ShipData: Record<string, Ship> = {
             armor: 350,
             shield: 600,
             capacitor: 300,
+            capacitorRechargeRate: 300 / 300,
             powerGrid: 42,
             cpu: 160,
             speed: 310,
@@ -150,6 +149,7 @@ export const ShipData: Record<string, Ship> = {
             armor: 550,
             shield: 400,
             capacitor: 275,
+            capacitorRechargeRate: 275 / 300,
             powerGrid: 40,
             cpu: 145,
             speed: 335,
@@ -192,6 +192,7 @@ export const ShipData: Record<string, Ship> = {
             armor: 600,
             shield: 350,
             capacitor: 325,
+            capacitorRechargeRate: 325 / 300,
             powerGrid: 48,
             cpu: 135,
             speed: 295,
@@ -235,6 +236,7 @@ export const ShipData: Record<string, Ship> = {
             armor: 400,
             shield: 500,
             capacitor: 300,
+            capacitorRechargeRate: 300 / 300,
             powerGrid: 45,
             cpu: 170,
             speed: 280,
@@ -280,6 +282,7 @@ export const ShipData: Record<string, Ship> = {
             armor: 700,
             shield: 800,
             capacitor: 450,
+            capacitorRechargeRate: 450 / 300,
             powerGrid: 85,
             cpu: 220,
             speed: 245,
@@ -324,6 +327,7 @@ export const ShipData: Record<string, Ship> = {
             armor: 1800,
             shield: 2200,
             capacitor: 1100,
+            capacitorRechargeRate: 1100 / 300,
             powerGrid: 780,
             cpu: 340,
             speed: 195,
@@ -366,6 +370,7 @@ export const ShipData: Record<string, Ship> = {
             armor: 2400,
             shield: 2000,
             capacitor: 1200,
+            capacitorRechargeRate: 1200 / 300,
             powerGrid: 700,
             cpu: 350,
             speed: 170,
@@ -409,6 +414,7 @@ export const ShipData: Record<string, Ship> = {
             armor: 2000,
             shield: 3000,
             capacitor: 1400,
+            capacitorRechargeRate: 1400 / 300,
             powerGrid: 45,
             cpu: 275,
             speed: 90,
@@ -454,6 +460,7 @@ export const ShipData: Record<string, Ship> = {
             armor: 5000,
             shield: 6000,
             capacitor: 2400,
+            capacitorRechargeRate: 2400 / 300,
             powerGrid: 1425,
             cpu: 450,
             speed: 145,
@@ -498,6 +505,7 @@ export const ShipData: Record<string, Ship> = {
             armor: 7500,
             shield: 9000,
             capacitor: 4600,
+            capacitorRechargeRate: 4600 / 300,
             powerGrid: 17000,
             cpu: 600,
             speed: 105,
@@ -540,6 +548,7 @@ export const ShipData: Record<string, Ship> = {
             armor: 10000,
             shield: 7500,
             capacitor: 5000,
+            capacitorRechargeRate: 5000 / 300,
             powerGrid: 14000,
             cpu: 575,
             speed: 95,
@@ -584,6 +593,7 @@ export const ShipData: Record<string, Ship> = {
             armor: 1500,
             shield: 3000,
             capacitor: 800,
+            capacitorRechargeRate: 800 / 300,
             powerGrid: 250,
             cpu: 300,
             speed: 100,
@@ -627,6 +637,7 @@ export const ShipData: Record<string, Ship> = {
             armor: 10000, // EVE accurate
             shield: 15000, // EVE accurate
             capacitor: 8000,
+            capacitorRechargeRate: 8000 / 300,
             powerGrid: 50000,
             cpu: 850,
             speed: 60,

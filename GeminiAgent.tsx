@@ -1,6 +1,6 @@
 // GeminiAgent.tsx
 import React, { useState, useEffect } from 'react';
-import { GoogleGenAI, Type } from "@google/genai";
+// import { GoogleGenAI, Type } from "@google/genai";
 
 import type { AgentData, MissionData, PlayerState } from './types';
 // FIX: `ORE_DATA` is not exported from `./constants`. It should be imported from `./ores`.
@@ -34,111 +34,77 @@ export const AgentInterface: React.FC<{
 
     useEffect(() => {
         if (!isOpen) return;
-        
+
         if (cachedAgent && cachedMissions) {
-            // Data is already cached, do nothing.
-             if (activeMissionForThisAgent) {
+            if (activeMissionForThisAgent) {
                 setSelectedMission(activeMissionForThisAgent);
-             } else if (cachedMissions.length > 0) {
+            } else if (cachedMissions.length > 0) {
                 setSelectedMission(cachedMissions[0]);
-             }
+            }
             return;
         }
 
-        const generateData = async () => {
+        const generateMockData = () => {
             setIsLoading(true);
             setError(null);
-            try {
-                const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-                
-                const system = GALAXY_DATA.systems.find(s => s.id === systemId);
-                const systemData = SOLAR_SYSTEM_DATA[systemId];
-                if (!system || !systemData) throw new Error("System data not found.");
 
-                const beltData = ASTEROID_BELT_TYPES[systemData.asteroidBeltType || 'sparse'];
-                const availableOres = Object.keys(beltData.oreDistribution).map(id => getItemData(id)?.name).filter(Boolean);
-                const availableBps = ['bp_rifter', 'bp_venture', 'bp_miner_i', 'bp_shield_extender'];
+            // Artificial delay to simulate loading
+            setTimeout(() => {
+                try {
+                    const system = GALAXY_DATA.systems.find(s => s.id === systemId);
+                    const systemData = SOLAR_SYSTEM_DATA[systemId];
+                    if (!system || !systemData) throw new Error("System data not found.");
 
-                // 1. Generate Agent
-                const agentSchema = {
-                    type: Type.OBJECT,
-                    properties: {
-                        name: { type: Type.STRING },
-                        corporation: { type: Type.STRING },
-                        backstory: { type: Type.STRING },
-                    }
-                };
-                const agentPrompt = `Generate a unique mission agent for a space station. The station is in the "${system.name}" system, which has a security level of ${system.security.toFixed(1)}. Provide the agent's full name, their corporation's name, and a short, engaging backstory (2-3 sentences).`;
-                const agentResponse = await ai.models.generateContent({
-                    model: 'gemini-2.5-flash',
-                    contents: agentPrompt,
-                    config: { responseMimeType: 'application/json', responseSchema: agentSchema }
-                });
-                const agentData = JSON.parse(agentResponse.text) as Omit<AgentData, 'id'>;
-                const newAgent: AgentData = { ...agentData, id: stationId };
-                setCachedAgent(newAgent);
-
-                // 2. Generate Missions
-                const missionSchema = {
-                    type: Type.ARRAY,
-                    items: {
-                        type: Type.OBJECT,
-                        properties: {
-                             title: { type: Type.STRING },
-                             description: { type: Type.STRING },
-                             objectiveOre: { type: Type.STRING },
-                             objectiveQuantity: { type: Type.NUMBER },
-                             reward: {
-                                 type: Type.OBJECT,
-                                 properties: {
-                                     isk: { type: Type.NUMBER, nullable: true },
-                                     itemId: { type: Type.STRING, nullable: true },
-                                     itemQuantity: { type: Type.NUMBER, nullable: true },
-                                 }
-                             }
-                        }
-                    }
-                };
-                const missionsPrompt = `Based on the agent "${newAgent.name}" of "${newAgent.corporation}" and system information, generate 3 unique mining missions. Agent's personality: ${newAgent.backstory}. System: "${system.name}" (Security: ${system.security.toFixed(1)}). Available ore names in this system are: ${availableOres.join(', ')}. Missions should have a title, a short description from the agent's perspective, a single mining objective (use one of the available ore names and a quantity between 2,000 and 25,000), and a reward. Rewards can be ISK, a blueprint, or a specific item. The reward value should be proportional to the quantity and rarity of the ore required. Available blueprints for rewards are: ${availableBps.join(', ')}. For an item reward, use the blueprint ID as the itemId.`;
-                const missionsResponse = await ai.models.generateContent({
-                    model: 'gemini-2.5-flash',
-                    contents: missionsPrompt,
-                    config: { responseMimeType: 'application/json', responseSchema: missionSchema }
-                });
-                const missionData = JSON.parse(missionsResponse.text);
-
-                const newMissions: MissionData[] = missionData.map((m: any, index: number) => {
-                    const oreId = Object.keys(ORE_DATA).find(key => ORE_DATA[key].name === m.objectiveOre);
-                    return {
-                        id: `${stationId}-${index}-${Date.now()}`,
-                        agent: newAgent,
-                        stationId,
-                        title: m.title,
-                        description: m.description,
-                        objectives: oreId ? { [oreId]: m.objectiveQuantity } : {},
-                        rewards: {
-                            isk: m.reward?.isk,
-                            items: m.reward?.itemId ? [{ id: m.reward.itemId, quantity: m.reward.itemQuantity || 1 }] : undefined
-                        },
-                        status: 'offered'
+                    const mockAgent: AgentData = {
+                        id: stationId,
+                        name: `Agent ${stationName.split(' ')[0]}`,
+                        corporation: "Local Mining Inc.",
+                        backstory: `We keep the wheels of industry turning in ${system.name}. Help us meet our quotas, pilot, and you'll be well compensated.`
                     };
-                }).filter((m: MissionData) => Object.keys(m.objectives).length > 0);
+                    setCachedAgent(mockAgent);
 
-                setCachedMissions(newMissions);
-                 if (newMissions.length > 0) {
-                    setSelectedMission(newMissions[0]);
+                    const beltData = ASTEROID_BELT_TYPES[systemData.asteroidBeltType || 'sparse'];
+                    const availableOreIds = Object.keys(beltData.oreDistribution);
+
+                    const mockMissions: MissionData[] = availableOreIds.slice(0, 3).map((oreId, index) => {
+                        const oreData = getItemData(oreId);
+                        const quantity = (Math.floor(Math.random() * 5) + 1) * 2000;
+                        // FIX: Explicitly type the mission object to ensure its properties
+                        // match the MissionData interface, particularly for literal types
+                        // like 'type' and 'status'.
+                        const mission: MissionData = {
+                            id: `${stationId}-${index}-${Date.now()}`,
+                            agent: mockAgent,
+                            stationId,
+                            type: 'mining',
+                            title: `Mining Op: ${oreData?.name}`,
+                            description: `We have a client who needs a large shipment of ${oreData?.name}. Bring me ${quantity.toLocaleString()} units and I will reward you handsomely.`,
+                            objectives: { [oreId]: quantity },
+                            rewards: {
+                                isk: Math.ceil(quantity * (oreData?.basePrice || 10) * 1.25)
+                            },
+                            status: 'offered'
+                        };
+                        return mission;
+                    }).filter(m => m.objectives && Object.keys(m.objectives).length > 0);
+
+                    setCachedMissions(mockMissions);
+                    if (mockMissions.length > 0) {
+                        setSelectedMission(mockMissions[0]);
+                    }
+                } catch (e) {
+                     console.error("Failed to generate mock agent data:", e);
+                     setError("Failed to load agent data. Please try again later.");
+                } finally {
+                    setIsLoading(false);
                 }
-
-            } catch (e) {
-                console.error("Gemini API call failed:", e);
-                setError("Failed to contact the agent. Please try again later.");
-            } finally {
-                setIsLoading(false);
-            }
+            }, 500);
         };
 
-        generateData();
-    }, [isOpen, stationId, systemId, cachedAgent, cachedMissions, setCachedAgent, setCachedMissions, activeMissionForThisAgent]);
+        generateMockData();
+
+    }, [isOpen, stationId, systemId, stationName, cachedAgent, cachedMissions, setCachedAgent, setCachedMissions, activeMissionForThisAgent]);
+
 
     const handleAccept = () => {
         if (!selectedMission) return;
