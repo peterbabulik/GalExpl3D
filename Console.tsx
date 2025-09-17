@@ -22,12 +22,7 @@ const ShipInfoPanel: React.FC<{ playerState: PlayerState, activeModuleSlots: str
         const currentShip = SHIP_DATA[playerState.currentShipId];
         if (!currentShip) return null;
         
-        const allFittedModules = Object.values(playerState.currentShipFitting)
-            .flat()
-            .map(id => id ? getItemData(id) as Module : null)
-            .filter((m): m is Module => m !== null);
-            
-        return calculateShipStats(currentShip, allFittedModules, activeModuleSlots);
+        return calculateShipStats(currentShip, playerState.currentShipFitting, playerState.skills, activeModuleSlots);
 
     }, [playerState, activeModuleSlots]);
 
@@ -74,9 +69,31 @@ const ShipInfoPanel: React.FC<{ playerState: PlayerState, activeModuleSlots: str
                 <div><span className="text-gray-400">Recharge:</span> {(shipStats.capacitor.rechargeRate).toFixed(2)} GJ/s</div>
                 <div className="col-span-2"><span className="text-gray-400">Recharge Time:</span> {shipStats.capacitor.rechargeTime.toFixed(1)} s</div>
              </div>
+             
+             <h4 className="font-bold text-sm text-orange-300 border-b border-gray-600 mt-2 mb-1">Offense</h4>
+             <div className="grid grid-cols-2 gap-x-4">
+                 <div><span className="text-gray-400">DPS:</span> {shipStats.offense.dps.toFixed(1)}</div>
+                 <div><span className="text-gray-400">Alpha:</span> {shipStats.offense.alphaDamage.toFixed(0)}</div>
+             </div>
 
              <h4 className="font-bold text-sm text-green-300 border-b border-gray-600 mt-2 mb-1">Navigation</h4>
              <div><span className="text-gray-400">Max Velocity:</span> {Math.round(shipStats.maxVelocity)} m/s</div>
+             
+             {shipStats.activeModules.length > 0 && (
+                <>
+                    <h4 className="font-bold text-sm text-yellow-300 border-b border-gray-600 mt-2 mb-1">Active Modifiers</h4>
+                    {shipStats.activeModules.map((mod, index) => (
+                        <div key={index} className="mb-1">
+                            <p className="font-semibold text-xs m-0 text-yellow-200">{mod.name}</p>
+                            <ul className="list-disc list-inside text-gray-400 pl-2">
+                                {Object.entries(mod.bonuses).map(([key, value]) => (
+                                    <li key={key} className="text-green-400"><span className="text-gray-300">{key}:</span> {value}</li>
+                                ))}
+                            </ul>
+                        </div>
+                    ))}
+                </>
+            )}
         </div>
     );
 }

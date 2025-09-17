@@ -37,6 +37,7 @@ import { startMiningAnimation, updateMiningAnimation, stopMiningAnimation } from
 import { GalaxyMap } from './GalaxyMap';
 import { spawnEnemies, updateEnemies, createEnemyLoot, updateEnemyAttacks } from './enemies';
 import type { Enemy } from './enemies';
+import { calculateShipStats } from './stat-calculator';
 
 
 // --- SAVE DATA HELPERS ---
@@ -661,6 +662,14 @@ export default function App() {
         const { selectedTarget } = targetDataRef.current;
         if (!selectedTarget || selectedTarget.type !== 'pirate' || !selectedTarget.hp) return;
     
+        const shipStats = calculateShipStats(
+            SHIP_DATA[playerStateRef.current.currentShipId], 
+            playerStateRef.current.currentShipFitting, 
+            playerStateRef.current.skills, 
+            activeModuleSlotsRef.current
+        );
+        const { damageMultipliers } = shipStats.offense;
+
         const now = Date.now();
         let totalDamageThisTick = 0;
         let capacitorConsumedThisTick = 0;
@@ -705,6 +714,7 @@ export default function App() {
             }
             
             let damagePerShot = 0;
+            const weaponCategory = module.subcategory as keyof typeof damageMultipliers;
     
             // Handle ammo consumption and damage calculation based on weapon type
             if (module.subcategory !== 'energy') {
@@ -733,6 +743,10 @@ export default function App() {
                 damagePerShot = ammoData?.damage || 0;
             } else { // Energy weapons
                 damagePerShot = module.attributes.damage || 0;
+            }
+
+            if (damageMultipliers && damageMultipliers[weaponCategory]) {
+                damagePerShot *= damageMultipliers[weaponCategory];
             }
             
             weaponCycleTimersRef.current[slotKey] = now;
