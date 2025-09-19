@@ -1018,7 +1018,7 @@ export const BlueprintData: Record<string, Blueprint> = {
             'ammunitionAssembly': 0.8
         }
     },
-    
+
     'bp_antimatter_s': {
         id: 'bp_antimatter_s',
         name: 'Antimatter Charge S Blueprint',

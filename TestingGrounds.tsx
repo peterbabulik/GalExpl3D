@@ -2,6 +2,7 @@
 import React, { useState, useCallback } from 'react';
 import { ShipData, ShipClasses } from './ships';
 import { MODULE_DATA } from './modules';
+import { ORE_DATA } from './ores';
 import { UIButton } from './UI';
 import { calculateShipStats, isModulePassive, CalculatedStats } from './stat-calculator';
 import type { Module, PlayerState } from './types';
@@ -203,6 +204,115 @@ export const TestingGrounds: React.FC<TestingGroundsProps> = ({ stationName, onU
         }
     }, [allShips]);
 
+     const runMiningTest = useCallback(async () => {
+        setIsTesting(true);
+        const newLogs: string[] = ['--- Starting Mining Yield Test ---'];
+        setLogs(newLogs);
+        await new Promise(r => setTimeout(r, 0));
+
+        try {
+            const miningShips = Object.values(ShipData).filter(s =>
+                s.race === 'ORE' || s.bonuses.some(b => b.type === 'miningYield') || s.class.toLowerCase().includes('mining')
+            );
+            const miningLasers = Object.values(MODULE_DATA).filter(m =>
+                m.slot === 'high' && m.subcategory.includes('miner')
+            );
+            const miningUpgrades = Object.values(MODULE_DATA).filter(m =>
+                m.slot === 'low' && m.subcategory === 'mining_upgrade'
+            );
+
+            if (miningShips.length === 0) newLogs.push("No mining ships found in data.");
+            if (miningLasers.length === 0) newLogs.push("No mining lasers found in data.");
+
+            for (const ship of miningShips) {
+                newLogs.push(`\n[SHIP] ${ship.name}`);
+                setLogs([...newLogs]);
+                await new Promise(r => setTimeout(r, 0));
+
+                for (const laser of miningLasers) {
+                    if (ship.slots.high < 1) continue;
+
+                    const baseFitting: PlayerState['currentShipFitting'] = {
+                        high: Array(ship.slots.high).fill(null),
+                        medium: Array(ship.slots.medium).fill(null),
+                        low: Array(ship.slots.low).fill(null),
+                        rig: Array(ship.slots.rig).fill(null),
+                    };
+                    baseFitting.high[0] = laser.id;
+
+                    const baseStats = calculateShipStats(ship, baseFitting, {});
+                    newLogs.push(`  - With [${laser.name}]: ${baseStats.mining.yieldPerMinute.toFixed(2)} m3/min`);
+
+                    if (ship.slots.low > 0 && miningUpgrades.length > 0) {
+                        const upgrade = miningUpgrades[0];
+                        const upgradeFitting = JSON.parse(JSON.stringify(baseFitting));
+                        upgradeFitting.low[0] = upgrade.id;
+                        const upgradeStats = calculateShipStats(ship, upgradeFitting, {});
+                        newLogs.push(`    + 1x [${upgrade.name}]: ${upgradeStats.mining.yieldPerMinute.toFixed(2)} m3/min`);
+                    }
+
+                    if (ship.slots.low >= 2 && miningUpgrades.length > 0) {
+                        const upgrade = miningUpgrades[0];
+                        const stackingFitting = JSON.parse(JSON.stringify(baseFitting));
+                        stackingFitting.low[0] = upgrade.id;
+                        stackingFitting.low[1] = upgrade.id;
+                        const stackingStats = calculateShipStats(ship, stackingFitting, {});
+                        newLogs.push(`    + 2x [${upgrade.name}]: ${stackingStats.mining.yieldPerMinute.toFixed(2)} m3/min (w/ stacking penalty)`);
+                    }
+                }
+            }
+
+            newLogs.push('\n--- Mining Yield Test Complete ---');
+            setLogs(newLogs);
+        } catch (error: any) {
+            console.error("Mining test run failed:", error);
+            setLogs(prev => [...prev, '--- An error occurred during the mining test. Check console. ---', error.message]);
+        } finally {
+            setIsTesting(false);
+        }
+    }, []);
+
+    const runOreCargoTest = useCallback(async () => {
+        setIsTesting(true);
+        const newLogs: string[] = ['--- Starting Ore Cargo Capacity Test ---'];
+        setLogs(newLogs);
+        await new Promise(r => setTimeout(r, 0));
+
+        try {
+            const allOres = Object.values(ORE_DATA).sort((a, b) => (a.basePrice || 0) - (b.basePrice || 0));
+
+            for (const ship of allShips) {
+                newLogs.push(`\n[SHIP] ${ship.name}`);
+                const totalCapacity = (ship.attributes.cargoCapacity || 0) + (ship.attributes.oreHold || 0);
+
+                if (totalCapacity === 0) {
+                    newLogs.push('  - No cargo or ore hold.');
+                    continue;
+                }
+                
+                newLogs.push(`  - Total Ore Capacity: ${totalCapacity.toLocaleString()} m3`);
+
+                for (const ore of allOres) {
+                    if (ore.volume && ore.volume > 0) {
+                        const maxUnits = Math.floor(totalCapacity / ore.volume);
+                        newLogs.push(`    - [${ore.name}]: Can hold ${maxUnits.toLocaleString()} units.`);
+                    }
+                }
+                
+                setLogs([...newLogs]);
+                await new Promise(r => setTimeout(r, 0)); // Allow UI to update
+            }
+
+            newLogs.push('\n--- Ore Cargo Capacity Test Complete ---');
+            setLogs(newLogs);
+        } catch (error: any) {
+            console.error("Ore cargo test run failed:", error);
+            setLogs(prev => [...prev, '--- An error occurred during the ore cargo test. Check console. ---', error.message]);
+        } finally {
+            setIsTesting(false);
+        }
+    }, [allShips]);
+
     return (
         <div className="absolute inset-0 z-[200] p-8 box-border flex flex-col items-center justify-center bg-black/80">
             <h2 className="text-4xl mb-6 text-center">Docked at {stationName}</h2>
@@ -233,6 +343,12 @@ export const TestingGrounds: React.FC<TestingGroundsProps> = ({ stationName, onU
                         </UIButton>
                          <UIButton onClick={runActivationTest} disabled={isTesting} className="w-full !text-lg !py-3">
                             {isTesting ? 'Testing...' : 'Test Module Active Effects'}
+                        </UIButton>
+                        <UIButton onClick={runMiningTest} disabled={isTesting} className="w-full !text-lg !py-3">
+                            {isTesting ? 'Testing...' : 'Test Mining Yields'}
+                        </UIButton>
+                        <UIButton onClick={runOreCargoTest} disabled={isTesting} className="w-full !text-lg !py-3">
+                            {isTesting ? 'Testing...' : 'Test Ore Cargo Capacity'}
                         </UIButton>
                     </div>
                     <div className="bg-black/50 p-3 rounded flex-grow overflow-y-auto font-mono text-sm">

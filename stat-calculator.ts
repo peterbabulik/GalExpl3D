@@ -21,6 +21,10 @@ export interface CalculatedStats {
         damageMultipliers: Record<string, number>;
         rofMultipliers: Record<string, number>;
     };
+    mining: {
+        yieldPerCycle: number;
+        yieldPerMinute: number;
+    };
     activeModules: {
         name: string;
         bonuses: Record<string, string>;
@@ -125,11 +129,16 @@ export function calculateShipStats(ship: Ship, fitting: PlayerState['currentShip
             armor: { hp: ship.attributes.armor, em: 0, thermal: 0, kinetic: 0, explosive: 0 },
             hull: { hp: ship.attributes.hull, em: 0, thermal: 0, kinetic: 0, explosive: 0 },
         },
+        mining: {
+            yieldPerCycle: 0,
+            yieldPerMinute: 0,
+        },
         activeModules: [],
     };
 
     let capacitorCapacityMultiplier = 1.0;
     let capacitorRechargeTimeFactor = 1.0;
+    let miningYieldMultiplier = 1.0;
     
     // Weapon multipliers
     const damageMultipliers = { projectile: 1.0, hybrid: 1.0, energy: 1.0, missile: 1.0 };
@@ -163,6 +172,13 @@ export function calculateShipStats(ship: Ship, fitting: PlayerState['currentShip
                 }
             }
         }
+         if (bonus.type === 'miningYield') {
+            if (bonus.flat) {
+                miningYieldMultiplier += bonus.value / 100;
+            } else if (bonus.perLevel) {
+                miningYieldMultiplier += (bonus.value / 100) * shipSkillLevel;
+            }
+        }
     });
 
     // --- Apply Global Skill Effects ---
@@ -175,6 +191,9 @@ export function calculateShipStats(ship: Ship, fitting: PlayerState['currentShip
                     if (damageMultipliers[category]) {
                         damageMultipliers[category] += effect.value * playerSkill.level;
                     }
+                }
+                 if (effect.type === 'miningYieldBonus') {
+                    miningYieldMultiplier += effect.value * playerSkill.level;
                 }
             });
         }
@@ -248,6 +267,10 @@ export function calculateShipStats(ship: Ship, fitting: PlayerState['currentShip
         
         const applyThisModule = isPassive || moduleIsActive;
         if (applyThisModule) {
+             if (attrs.miningYieldBonus) {
+                const effectiveness = getActiveStackingEffectiveness(getStackingPenaltyKey(module, 'miningYieldBonus'));
+                miningYieldMultiplier += attrs.miningYieldBonus * effectiveness;
+            }
             if (attrs.shieldBonus) {
                 const effectiveness = getActiveStackingEffectiveness(getStackingPenaltyKey(module, 'shieldBonus'));
                 stats.defenses.shield.hp *= (1 + (attrs.shieldBonus * effectiveness));
@@ -339,6 +362,28 @@ export function calculateShipStats(ship: Ship, fitting: PlayerState['currentShip
         damageMultipliers,
         rofMultipliers
     };
+
+    // --- Calculate Mining ---
+    let baseModuleYield = 0;
+    let cycleTime = 60; // Default
+    let minerFitted = false;
+    fitting.high.forEach(moduleId => {
+        if (!moduleId) return;
+        const module = getItemData(moduleId) as Module;
+        if (module && module.subcategory.includes('miner')) {
+            minerFitted = true;
+            baseModuleYield += module.attributes.miningYield || 0;
+            cycleTime = module.attributes.cycleTime || 60;
+        }
+    });
+
+    if (minerFitted) {
+        stats.mining.yieldPerCycle = baseModuleYield * miningYieldMultiplier;
+        stats.mining.yieldPerMinute = stats.mining.yieldPerCycle * (60 / cycleTime);
+    } else {
+        stats.mining = { yieldPerCycle: 0, yieldPerMinute: 0 };
+    }
+
     stats.maxVelocity = Math.max(0, stats.maxVelocity);
 
     return stats as CalculatedStats;
