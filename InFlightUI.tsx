@@ -6,6 +6,7 @@ import {
     getItemData,
 } from './constants';
 import { UIButton, ItemIcon, HPBar } from './UI';
+import { isModulePassive } from './stat-calculator';
 
 // --- CONSTANTS ---
 const MINING_RANGE = 1500;
@@ -326,16 +327,11 @@ export const ModuleBarUI: React.FC<{
     const renderSlot = (moduleId: string | null, slotType: 'high' | 'medium' | 'low', slotIndex: number) => {
         const slotKey = `${slotType}-${slotIndex}`;
         const module = moduleId ? getItemData(moduleId) as Module : null;
+        const isPassive = module ? isModulePassive(module) : false;
         const isActive = activeModuleSlots.includes(slotKey);
 
         const isWeapon = module?.slot === 'high' && ['projectile', 'hybrid', 'energy', 'missile'].includes(module.subcategory);
         const isDeactivated = isWeapon && deactivatedWeaponSlots.includes(slotKey);
-
-        const baseStyle = "w-12 h-12 rounded-md flex items-center justify-center border-2 transition-all p-0.5";
-        const emptyStyle = "bg-gray-800 border-gray-600";
-        const filledStyle = "bg-gray-700 border-gray-400 cursor-pointer hover:bg-gray-600";
-        const activeStyle = isActive ? "!border-green-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" : "";
-        const deactivatedStyle = isDeactivated ? "opacity-40 !bg-red-900/50" : "";
 
         const handleMouseEnter = (e: React.MouseEvent) => {
             if (module) {
@@ -343,15 +339,37 @@ export const ModuleBarUI: React.FC<{
                 if (module.attributes.capacitorUsage) {
                     content += `<br/>Capacitor: ${module.attributes.capacitorUsage} GJ`;
                 }
+                if (isPassive) {
+                    content += `<br/><span class='text-yellow-400'>This is a passive module.</span>`;
+                } else if (isDeactivated) {
+                    content += `<br/><span class='text-red-400'>Weapon group offline. Click to reactivate.</span>`;
+                }
                 setTooltip(content, e);
             }
         };
 
+        const baseStyle = "w-12 h-12 rounded-md flex items-center justify-center border-2 transition-all p-0.5";
+        let finalStyle = baseStyle;
+
+        if (!module) {
+            finalStyle += " bg-gray-800 border-gray-600";
+        } else if (isPassive) {
+            finalStyle += " bg-gray-700 border-yellow-500 passive-module-blink cursor-help";
+        } else { // Active-type module
+            finalStyle += " bg-gray-700 border-gray-400 cursor-pointer hover:bg-gray-600";
+            if (isActive) {
+                finalStyle += " !border-green-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]";
+            }
+            if (isDeactivated) {
+                finalStyle += " opacity-40 !bg-red-900/50";
+            }
+        }
+
         return (
             <div
                 key={slotKey}
-                className={`${baseStyle} ${module ? filledStyle : emptyStyle} ${activeStyle} ${deactivatedStyle}`}
-                onClick={() => module && onSlotClick(slotType, slotIndex)}
+                className={finalStyle}
+                onClick={() => module && !isPassive && onSlotClick(slotType, slotIndex)}
                 onMouseEnter={handleMouseEnter}
                 onMouseLeave={clearTooltip}
             >
