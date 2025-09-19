@@ -1,13 +1,63 @@
 // constants.ts
-import type { PlayerState, GalaxyData, SolarSystemData, ItemData } from './types';
+import type { PlayerState, GalaxyData, ItemData } from './types';
 import { ShipData } from './ships';
 import { BlueprintData } from './blueprints';
 import { ORE_DATA, MINERAL_DATA } from './ores';
 import { MODULE_DATA, OTHER_ITEM_DATA } from './modules';
+import { SOLAR_SYSTEM_DATA } from './systems';
 
 // Re-exporting for App.tsx with the expected names
 export const SHIP_DATA = ShipData;
 export const BLUEPRINT_DATA = BlueprintData;
+export { SOLAR_SYSTEM_DATA };
+
+// --- Procedurally Generated Galaxy Data ---
+const newGalaxySystems = [];
+for (let i = 0; i < 100; i++) {
+    const systemId = 30 + i;
+    // Get the name from SOLAR_SYSTEM_DATA to ensure consistency
+    const name = SOLAR_SYSTEM_DATA[systemId]?.name || `NS-${i}`;
+    newGalaxySystems.push({
+        id: systemId,
+        name: name,
+        security: 0.0,
+        // Place them in a new, distant cluster
+        x: (Math.random() - 0.5) * 1000 + 1200, // Cluster far to the right
+        y: (Math.random() - 0.5) * 1000,
+    });
+}
+
+const newJumps: { from: number; to: number }[] = [];
+// Connect existing nullsec to the new cluster
+const entryPoints = [8, 10, 16, 17, 19, 20, 22, 23, 29]; // Rancer, Delve, Stain, etc.
+const newSystemIds = newGalaxySystems.map(s => s.id);
+
+// Create a few gateways from the old world to the new
+for(let i=0; i<5; i++) {
+    const fromSystem = entryPoints[Math.floor(Math.random() * entryPoints.length)];
+    const toSystem = newSystemIds[Math.floor(Math.random() * newSystemIds.length)];
+    // Ensure no duplicate jumps are created
+    if (!newJumps.some(j => (j.from === fromSystem && j.to === toSystem) || (j.from === toSystem && j.to === fromSystem))) {
+        newJumps.push({ from: fromSystem, to: toSystem });
+    }
+}
+
+// Create internal connections within the new cluster to make it navigable
+for (let i = 0; i < 150; i++) { // More jumps than systems for connectivity
+    const fromIndex = Math.floor(Math.random() * newSystemIds.length);
+    let toIndex = Math.floor(Math.random() * newSystemIds.length);
+    // Ensure it's not a jump to itself
+    while (fromIndex === toIndex) {
+        toIndex = Math.floor(Math.random() * newSystemIds.length);
+    }
+    const fromSystem = newSystemIds[fromIndex];
+    const toSystem = newSystemIds[toIndex];
+    // Avoid duplicate jumps
+    if (!newJumps.some(j => (j.from === fromSystem && j.to === toSystem) || (j.from === toSystem && j.to === fromSystem))) {
+        newJumps.push({ from: fromSystem, to: toSystem });
+    }
+}
+
 
 export const GALAXY_DATA: GalaxyData = {
     systems: [
@@ -43,6 +93,8 @@ export const GALAXY_DATA: GalaxyData = {
         { id: 29, name: 'Test3', security: 0.0, x: 10, y: -150 },
         // Dev Tool System
         { id: 1000, name: 'DevTools', security: 1.0, x: 500, y: 500 },
+        // Generated Nullsec Systems
+        ...newGalaxySystems,
     ],
     jumps: [
         { from: 1, to: 2 },
@@ -83,190 +135,9 @@ export const GALAXY_DATA: GalaxyData = {
         { from: 5, to: 23 },
         { from: 27, to: 28 },
         { from: 28, to: 29 },
+        // Generated Nullsec Jumps
+        ...newJumps,
     ]
-};
-
-export const SOLAR_SYSTEM_DATA: Record<number, SolarSystemData> = {
-    1: {
-        name: 'Sol',
-        star: { color: 0xFFFF00, diameter: 1392700 },
-        planets: [
-            { name: 'Mercury', type: 'rocky', diameter: 4879, distance: 5000, color: 0x9d9d9d },
-            { name: 'Venus', type: 'rocky', diameter: 12104, distance: 8000, color: 0xdaa520 },
-            { name: 'Earth', type: 'terran', diameter: 12742, distance: 12000, color: 0x4682b4 },
-            { name: 'Mars', type: 'rocky', diameter: 6779, distance: 18000, color: 0xff4500 },
-        ],
-        station: { name: 'Titan Station', orbitsPlanetIndex: 2, orbitDistance: 400, type: 'standard' },
-        asteroidBeltType: 'moderate',
-    },
-    2: {
-        name: 'Jita',
-        star: { color: 0xFFF0DD, diameter: 1700000 },
-        planets: [
-             { name: 'Jita IV', type: 'gas', diameter: 50000, distance: 10000, color: 0xFFA500 },
-             { name: 'Jita V', type: 'rocky', diameter: 8000, distance: 15000, color: 0x8B4513 },
-        ],
-        station: { name: 'Jita IV-4 Trade Hub', orbitsPlanetIndex: 0, orbitDistance: 800, type: 'standard' },
-        asteroidBeltType: 'rich',
-    },
-    3: {
-        name: 'Amarr',
-        star: { color: 0xFFD700, diameter: 1800000 },
-        planets: [
-             { name: 'Amarr I', type: 'terran', diameter: 14000, distance: 13000, color: 0xB8860B },
-        ],
-        station: { name: 'Amarr Imperial Palace', orbitsPlanetIndex: 0, orbitDistance: 600, type: 'standard' },
-        asteroidBeltType: 'moderate',
-    },
-    4: {
-        name: 'Dodixie',
-        star: { color: 0xADD8E6, diameter: 1600000 },
-        planets: [
-             { name: 'Dodixie IX', type: 'ice', diameter: 22000, distance: 20000, color: 0xADD8E6 },
-        ],
-        station: { name: 'Dodixie IX - Moon 20', orbitsPlanetIndex: 0, orbitDistance: 700, type: 'standard' },
-        asteroidBeltType: 'moderate',
-    },
-    5: {
-        name: 'Hek',
-        star: { color: 0xFF4500, diameter: 1100000 },
-        planets: [],
-        asteroidBeltType: 'dense',
-    },
-    6: {
-        name: 'Rens',
-        star: { color: 0xFF6347, diameter: 1200000 },
-        planets: [
-             { name: 'Rens VI', type: 'lava', diameter: 9000, distance: 9000, color: 0xDC143C },
-        ],
-        asteroidBeltType: 'dense',
-    },
-    7: {
-        name: 'Nul',
-        star: { color: 0x8A2BE2, diameter: 900000 },
-        planets: [],
-        asteroidBeltType: 'exceptional',
-    },
-    8: {
-        name: 'Rancer',
-        star: { color: 0xFF0000, diameter: 800000 },
-        planets: [
-             { name: 'Rancer I', type: 'barren', diameter: 4000, distance: 4000, color: 0x808080 },
-        ],
-        asteroidBeltType: 'exceptional',
-    },
-    9: {
-        name: 'Provi',
-        star: { color: 0x00FFFF, diameter: 2100000 },
-        planets: [
-             { name: 'Providence VII', type: 'gas', diameter: 60000, distance: 25000, color: 0x40E0D0 },
-        ],
-        asteroidBeltType: 'rich',
-    },
-    10: {
-        name: 'Delve',
-        star: { color: 0xFFFFFF, diameter: 1500000 },
-        planets: [],
-        asteroidBeltType: 'exceptional',
-    },
-    11: {
-        name: 'Querious',
-        star: { color: 0xF0E68C, diameter: 1400000 },
-        planets: [
-             { name: 'Querious V', type: 'rocky', diameter: 11000, distance: 11000, color: 0xCD853F },
-        ],
-        asteroidBeltType: 'exceptional',
-    },
-    12: {
-        name: 'Aridia',
-        star: { color: 0xFFE4B5, diameter: 1300000 },
-        planets: [
-             { name: 'Aridia III', type: 'desert', diameter: 7500, distance: 7500, color: 0xF5DEB3 },
-        ],
-        asteroidBeltType: 'rich',
-    },
-    // New Low-Sec/Null-Sec stations
-    14: {
-        name: 'Tama',
-        star: { color: 0xFF8C00, diameter: 950000 },
-        planets: [
-            { name: 'Tama V', type: 'barren', diameter: 9000, distance: 14000, color: 0xA0522D },
-        ],
-        station: { name: 'Tama V - Moon 1 Smuggler Den', orbitsPlanetIndex: 0, orbitDistance: 300, type: 'standard' },
-        asteroidBeltType: 'rich',
-    },
-    19: {
-        name: 'Stain',
-        star: { color: 0x8B0000, diameter: 2200000 },
-        planets: [
-            { name: 'LGK-VP I', type: 'lava', diameter: 15000, distance: 16000, color: 0xB22222 },
-        ],
-        station: { name: 'LGK-VP - Sansha\'s Nation Fortress', orbitsPlanetIndex: 0, orbitDistance: 600, type: 'standard' },
-        asteroidBeltType: 'exceptional',
-    },
-    20: {
-        name: 'Venal',
-        star: { color: 0x00BFFF, diameter: 1900000 },
-        planets: [
-            { name: 'Venal I', type: 'ice', diameter: 18000, distance: 10000, color: 0x5F9EA0 },
-            { name: '6-CZ49', type: 'gas', diameter: 70000, distance: 30000, color: 0x00CED1 },
-        ],
-        station: { name: '6-CZ49 - Guristas Assembly Plant', orbitsPlanetIndex: 1, orbitDistance: 500, type: 'standard' },
-        asteroidBeltType: 'exceptional',
-    },
-    21: {
-        name: 'Syndicate',
-        star: { color: 0x9370DB, diameter: 1400000 },
-        planets: [
-            { name: 'X-7OMU II', type: 'rocky', diameter: 11000, distance: 12000, color: 0x778899 },
-        ],
-        station: { name: 'X-7OMU - Intaki Syndicate Station', orbitsPlanetIndex: 0, orbitDistance: 450, type: 'standard' },
-        asteroidBeltType: 'rich',
-    },
-    27: {
-        name: 'Test',
-        star: { color: 0xFF4500, diameter: 800000 },
-        planets: [],
-        asteroidBeltType: 'dense',
-        piratePresence: 'low',
-    },
-    28: {
-        name: 'Test2',
-        star: { color: 0xFF6347, diameter: 900000 },
-        planets: [],
-        asteroidBeltType: 'rich',
-        piratePresence: 'medium',
-    },
-    29: {
-        name: 'Test3',
-        star: { color: 0xDC143C, diameter: 1000000 },
-        planets: [],
-        asteroidBeltType: 'exceptional',
-        piratePresence: 'high',
-    },
-    // Easter Egg System
-    999: {
-        name: 'bzzc',
-        star: { color: 0x00ff00, diameter: 500000 },
-        planets: [
-            { name: 'Pe3k Prime', type: 'terran', diameter: 15000, distance: 10000, color: 0x663399 },
-        ],
-        station: { name: "Pe3k's Rest", orbitsPlanetIndex: 0, orbitDistance: 500, type: 'standard' },
-        asteroidBeltType: 'sparse',
-    },
-    1000: {
-        name: 'DevTools',
-        star: { color: 0x00FF00, diameter: 1000000 },
-        planets: [
-            { name: 'Sandbox I', type: 'rocky', diameter: 10000, distance: 15000, color: 0xcccccc },
-        ],
-        station: {
-            name: 'Testing Grounds',
-            orbitsPlanetIndex: 0,
-            orbitDistance: 500,
-            type: 'testing'
-        },
-    },
 };
 
 export const DOCKED_BACKGROUND_IMAGES: string[] = [
