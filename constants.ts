@@ -1,5 +1,5 @@
 // constants.ts
-import type { PlayerState, GalaxyData, ItemData } from './types';
+import type { PlayerState, GalaxyData, ItemData, CorporationData } from './types';
 import { ShipData } from './ships';
 import { BlueprintData } from './blueprints';
 import { ORE_DATA, MINERAL_DATA } from './ores';
@@ -93,6 +93,7 @@ export const GALAXY_DATA: GalaxyData = {
         { id: 29, name: 'Test3', security: 0.0, x: 10, y: -150 },
         // Dev Tool System
         { id: 1000, name: 'DevTools', security: 1.0, x: 500, y: 500 },
+        { id: 1001, name: 'DevToolsNPC', security: 1.0, x: 500, y: -500 },
         // Generated Nullsec Systems
         ...newGalaxySystems,
     ],
@@ -101,6 +102,7 @@ export const GALAXY_DATA: GalaxyData = {
         { from: 1, to: 3 },
         { from: 1, to: 27 },
         { from: 1, to: 1000 }, // Jump to DevTools
+        { from: 1, to: 1001 }, // Jump to NPC DevTools
         { from: 2, to: 3 },
         { from: 2, to: 5 },
         { from: 3, to: 4 },
@@ -149,6 +151,78 @@ export const DOCKED_BACKGROUND_IMAGES: string[] = [
     'https://raw.githubusercontent.com/peterbabulik/GalExpl3D/main/Pictures/WeWantYou9.gif',
 ];
 
+const CLAIM_TIMER_SECONDS = 600; // 10 minutes
+
+export const CORPORATION_DATA: Record<string, CorporationData> = {
+    'corp_ore': { 
+        id: 'corp_ore', 
+        name: 'ORE', 
+        isk: 1000000, 
+        homeStationId: 'station_1_Titan_Station', // Sol
+        claimedSystemId: null,
+        assetHangar: { items: [], materials: {} },
+        shipsInSpace: [],
+        claimTimer: CLAIM_TIMER_SECONDS,
+        buyOrders: {},
+        buildQueue: [],
+    },
+    'corp_pirates': { 
+        id: 'corp_pirates', 
+        name: 'Pirates', 
+        isk: 1000000,
+        homeStationId: 'station_4_Dodixie_IX_-_Moon_20', // Dodixie
+        claimedSystemId: null,
+        assetHangar: { items: [], materials: {} },
+        shipsInSpace: [],
+        claimTimer: CLAIM_TIMER_SECONDS,
+        buyOrders: {},
+        buildQueue: [],
+    },
+    'corp_independent': { 
+        id: 'corp_independent', 
+        name: 'Independent', 
+        isk: 1000000,
+        homeStationId: 'station_3_Amarr_Imperial_Palace', // Amarr
+        claimedSystemId: null,
+        assetHangar: { items: [], materials: {} },
+        shipsInSpace: [],
+        claimTimer: CLAIM_TIMER_SECONDS,
+        buyOrders: {},
+        buildQueue: [],
+    },
+    'corp_republic': { 
+        id: 'corp_republic', 
+        name: 'Republic', 
+        isk: 1000000,
+        homeStationId: 'station_2_Jita_IV-4_Trade_Hub', // Jita
+        claimedSystemId: null,
+        assetHangar: { items: [], materials: {} },
+        shipsInSpace: [],
+        claimTimer: CLAIM_TIMER_SECONDS,
+        buyOrders: {},
+        buildQueue: [],
+    },
+    'corp_mining_services': {
+        id: 'corp_mining_services',
+        name: 'Mining Services',
+        isk: 1000000,
+        homeStationId: 'station_1_Titan_Station', // Sol
+        claimedSystemId: null,
+        assetHangar: { items: [], materials: {} },
+        shipsInSpace: [],
+        claimTimer: CLAIM_TIMER_SECONDS,
+        buyOrders: {},
+        buildQueue: [],
+    },
+};
+
+export const FLEET_GOALS: Record<string, Record<string, number>> = {
+    'corp_ore': { 'ship_venture': 5, 'ship_retriever': 2, 'ship_merlin': 1 },
+    'corp_pirates': { 'ship_rifter': 4, 'ship_stabber': 2, 'ship_tempest': 1, 'ship_venture': 2 },
+    'corp_independent': { 'ship_venture': 3, 'ship_rifter': 2, 'ship_vexor': 1 },
+    'corp_republic': { 'ship_punisher': 4, 'ship_incursus': 2, 'ship_hurricane': 1, 'ship_venture': 3 },
+    'corp_mining_services': { 'ship_venture': 10, 'ship_retriever': 5 },
+};
 
 // FIX: `INITIAL_PLAYER_STATE` was used before it was defined.
 // To resolve this, `initialPlayerShipId` is declared first and used

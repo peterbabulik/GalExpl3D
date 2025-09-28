@@ -12,6 +12,7 @@ const getMessageColor = (type: ConsoleMessageType): string => {
         case 'loot':
         case 'bounty': return 'text-green-400';
         case 'repair': return 'text-cyan-400';
+        case 'gemini': return 'text-purple-400';
         case 'system':
         default: return 'text-gray-300';
     }

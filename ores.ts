@@ -1,7 +1,28 @@
 // Ore and Material Data - EVE Online Inspired
 // Galaxy Explorer Game
 
-import type { Ore, Mineral, AsteroidBeltType, MiningModifiers, RefiningEfficiency } from './types';
+import type { Ore, Mineral, AsteroidBeltType, MiningModifiers, RefiningEfficiency, StorageLocation } from './types';
+
+export const STATION_REPROCESSING_YIELD = 0.75; // 75% efficiency for all NPC stations
+
+export function reprocessOreCargo(cargo: StorageLocation): Record<string, number> {
+    const mineralYield: Record<string, number> = {};
+    for (const oreId in cargo.materials) {
+        const quantity = cargo.materials[oreId];
+        const oreData = ORE_DATA[oreId];
+        if (oreData && oreData.category === 'Ore') {
+            const batches = quantity / 100; // Reprocessing is based on batches of 100 units of ore
+            for (const mineralId in oreData.refineYield) {
+                const baseYieldPerBatch = oreData.refineYield[mineralId];
+                const finalYield = Math.floor(batches * baseYieldPerBatch * STATION_REPROCESSING_YIELD);
+                if (finalYield > 0) {
+                    mineralYield[mineralId] = (mineralYield[mineralId] || 0) + finalYield;
+                }
+            }
+        }
+    }
+    return mineralYield;
+}
 
 export const ORE_DATA: Record<string, Ore> = {
     // Basic Ores (High-Sec)

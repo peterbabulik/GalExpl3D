@@ -284,6 +284,19 @@ export const SOLAR_SYSTEM_DATA: Record<number, SolarSystemData> = {
             type: 'testing'
         },
     },
+    1001: {
+        name: 'DevToolsNPC',
+        star: { color: 0x00FFFF, diameter: 1200000 },
+        planets: [
+            { name: 'Data Core I', type: 'gas', diameter: 30000, distance: 20000, color: 0x48D1CC },
+        ],
+        station: {
+            name: 'NPC Command',
+            orbitsPlanetIndex: 0,
+            orbitDistance: 800,
+            type: 'npc_command'
+        },
+    },
 };
 
 // --- Procedurally Generated Systems ---

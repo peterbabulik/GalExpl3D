@@ -4,6 +4,7 @@ import type { PlayerState, Target, NavPanelItem, Module, Drone, AnyItem } from '
 import { 
     SHIP_DATA,
     getItemData,
+    GALAXY_DATA,
 } from './constants';
 import { UIButton, ItemIcon, HPBar } from './UI';
 import { isModulePassive } from './stat-calculator';
@@ -47,8 +48,9 @@ export const NavPanel: React.FC<{
     selectedTargetId: string | null;
     onSelectTarget: (uuid: string) => void;
 }> = ({ data, selectedTargetId, onSelectTarget }) => {
-    const celestials = data.filter(item => item.type !== 'asteroid' && item.type !== 'pirate' && item.type !== 'wreck');
+    const celestials = data.filter(item => ['star', 'planet', 'station'].includes(item.type));
     const npcs = data.filter(item => item.type === 'pirate');
+    const miners = data.filter(item => item.type === 'npc_miner');
     const asteroids = data.filter(item => item.type === 'asteroid');
     const wrecks = data.filter(item => item.type === 'wreck');
 
@@ -95,6 +97,14 @@ export const NavPanel: React.FC<{
                         </React.Fragment>
                     ))}
                 </ul>
+                {miners.length > 0 && (
+                    <>
+                        <h4 className="mt-2.5 mb-1.5 border-b border-gray-600 pb-1.5 text-base">Civilians</h4>
+                        <ul className="list-none p-0 m-0">
+                            {miners.map(item => renderItem(item, false, 'text-yellow-400'))}
+                        </ul>
+                    </>
+                )}
                 {npcs.length > 0 && (
                     <>
                         <h4 className="mt-2.5 mb-1.5 border-b border-gray-600 pb-1.5 text-base">NPCs</h4>
@@ -227,19 +237,28 @@ export const SelectedTargetUI: React.FC<{
     const canLoot = target.type === 'wreck' && target.distance <= LOOT_RANGE;
 
     const iconStyle = "w-8 h-8 p-1";
+    
+    const getTargetColor = () => {
+        switch (target.type) {
+            case 'pirate': return 'text-red-400';
+            case 'npc_miner': return 'text-yellow-400';
+            case 'wreck': return 'text-gray-400';
+            default: return '';
+        }
+    }
 
     return (
         <div className="absolute top-1/2 -translate-y-1/2 right-2.5 w-72 bg-gray-900/80 border border-gray-600 p-3 box-border z-5 flex flex-col gap-2">
             <div className="text-center">
-                <h3 className={`mt-0 mb-1 text-lg ${target.type === 'pirate' ? 'text-red-400' : ''} ${target.type === 'wreck' ? 'text-gray-400' : ''}`}>{target.name}</h3>
+                <h3 className={`mt-0 mb-1 text-lg ${getTargetColor()}`}>{target.name}</h3>
                 <p className="m-0 text-gray-400">{(target.distance / 1000).toFixed(1)} km</p>
                 {target.type === 'asteroid' && target.oreQuantity !== undefined && (
                     <p className="m-0 text-sm text-gray-500">Ore: {target.oreQuantity.toLocaleString()}</p>
                 )}
-                {target.type === 'pirate' && target.shipName && (
-                    <p className="m-0 text-sm text-red-400">Ship: {target.shipName}</p>
+                {(target.type === 'pirate' || target.type === 'npc_miner') && target.shipName && (
+                    <p className={`m-0 text-sm ${getTargetColor()}`}>Ship: {target.shipName}</p>
                 )}
-                {target.type === 'pirate' && target.hp && (
+                {target.hp && (target.type === 'pirate' || target.type === 'npc_miner') && (
                      <div className="space-y-0.5 mt-2">
                         <HPBar current={target.hp.shield} max={target.hp.maxShield} color="bg-cyan-500" label="Shield" />
                         <HPBar current={target.hp.armor} max={target.hp.maxArmor} color="bg-gray-400" label="Armor" />
@@ -320,7 +339,7 @@ export const ModuleBarUI: React.FC<{
     isAttackButtonDisabled: boolean;
     onDroneMine: () => void;
     isMineButtonDisabled: boolean;
-    selectedTargetType: 'pirate' | 'asteroid' | 'station' | 'planet' | 'star' | 'wreck' | null;
+    selectedTargetType: 'star' | 'planet' | 'station' | 'asteroid' | 'pirate' | 'wreck' | 'npc_miner' | null;
 }> = ({ playerState, onSlotClick, activeModuleSlots, deactivatedWeaponSlots, setTooltip, clearTooltip, hasDroneBay, droneStatus, activeDrones, totalDrones, onToggleDrones, onDroneAttack, isAttackButtonDisabled, onDroneMine, isMineButtonDisabled, selectedTargetType }) => {
     const { high, medium, low } = playerState.currentShipFitting;
 
@@ -434,6 +453,7 @@ export const MissionTrackerUI: React.FC<{ playerState: PlayerState }> = ({ playe
     }
     
     const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+    const getSystemById = (id: number) => GALAXY_DATA.systems.find(s => s.id === id);
 
     return (
         <div className="w-72 max-h-[30vh] bg-gray-900/80 border border-gray-600 p-2.5 box-border flex flex-col allow-touch-scroll">
@@ -448,6 +468,14 @@ export const MissionTrackerUI: React.FC<{ playerState: PlayerState }> = ({ playe
                     let complete = false;
                     let objectiveItem: AnyItem | undefined = undefined;
                     let objectiveText = '';
+                    let locationText: string | null = null;
+
+                    if (mission.locationSystemId) {
+                        const systemName = getSystemById(mission.locationSystemId)?.name;
+                        if (systemName) {
+                            locationText = `Location: ${systemName}`;
+                        }
+                    }
 
                     if (mission.type === 'mining') {
                         const stationHangar = playerState.stationHangars[mission.stationId];
@@ -466,6 +494,7 @@ export const MissionTrackerUI: React.FC<{ playerState: PlayerState }> = ({ playe
                         <div key={mission.id}>
                             <p className="font-bold m-0 leading-tight">{mission.title}</p>
                             <p className="text-xs text-gray-400 m-0 leading-tight">Agent: {mission.agent.name} ({mission.agent.corporation})</p>
+                             {locationText && <p className="text-xs text-cyan-300 m-0 leading-tight">{locationText}</p>}
                             <div className="text-sm flex items-center gap-2 mt-1">
                                 {mission.type === 'mining' && <ItemIcon item={objectiveItem} size="small" />}
                                 {mission.type === 'combat' && <span className="text-red-400 text-lg" aria-hidden="true">🎯</span>}

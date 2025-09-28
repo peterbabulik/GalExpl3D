@@ -1,16 +1,18 @@
 // StationModals.tsx
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 
-import type { PlayerState, StorageLocation, Module, Ore, Mineral, AnyItem, Drone, Ammunition, Skill } from './types';
+import type { PlayerState, StorageLocation, Module, Ore, Mineral, AnyItem, Drone, Ammunition, Skill, StationMarketData, GalaxyData, SolarSystemData, StationInfo, TradeRoute } from './types';
 import { 
     SHIP_DATA,
     BLUEPRINT_DATA,
     getItemData,
     SOLAR_SYSTEM_DATA,
+    GALAXY_DATA,
 } from './constants';
 import { SKILL_DATA, addSkillXp } from './skills';
-import { ORE_DATA, REFINING_EFFICIENCY, ASTEROID_BELT_TYPES } from './ores';
+import { ORE_DATA, REFINING_EFFICIENCY, ASTEROID_BELT_TYPES, reprocessOreCargo } from './ores';
 import { UIButton, ItemIcon, hasMaterials } from './UI';
+import { findBestTradeRouteForItem } from './npc-traders';
 
 const MARKET_BUY_PRICE_MODIFIER = 1.1; // Stations sell at 110% base price
 const MARKET_SELL_PRICE_MODIFIER = 0.9; // Stations buy at 90% base price
@@ -734,26 +736,18 @@ export const MarketInterface: React.FC<{
     setPlayerState: React.Dispatch<React.SetStateAction<PlayerState>>;
     stationId: string;
     systemId: number;
-}> = ({ isOpen, onClose, playerState, setPlayerState, stationId, systemId }) => {
+    stationMarketData: StationMarketData;
+    setStationMarketData: React.Dispatch<React.SetStateAction<StationMarketData>>;
+}> = ({ isOpen, onClose, playerState, setPlayerState, stationId, systemId, stationMarketData, setStationMarketData }) => {
     const [activeTab, setActiveTab] = useState<'buy' | 'sell'>('buy');
-    const [buyCategory, setBuyCategory] = useState<'blueprints' | 'ores'>('blueprints');
+    const [buyCategory, setBuyCategory] = useState<'blueprints' | 'minerals'>('blueprints');
     const [quantities, setQuantities] = useState<Record<string, string>>({} as Record<string, string>);
     const [message, setMessage] = useState('');
 
     if (!isOpen) return null;
 
     const stationHangar = playerState.stationHangars[stationId] || { items: [], materials: {} };
-
-    const getMarketOres = (systemId: number): Ore[] => {
-        const systemData = SOLAR_SYSTEM_DATA[systemId];
-        if (!systemData?.asteroidBeltType) return [];
-        
-        const beltData = ASTEROID_BELT_TYPES[systemData.asteroidBeltType];
-        if (!beltData) return [];
-        
-        const oreIds = Object.keys(beltData.oreDistribution);
-        return oreIds.map(id => ORE_DATA[id]).filter((o): o is Ore => !!o);
-    };
+    const marketInventory = stationMarketData[stationId] || {};
 
     const handleQuantityChange = (itemId: string, value: string) => {
         setQuantities(q => ({ ...q, [itemId]: value }));
@@ -767,6 +761,12 @@ export const MarketInterface: React.FC<{
     const handleBuy = (item: AnyItem) => {
         const quantity = parseInt(quantities[item.id] || '0', 10);
         if (isNaN(quantity) || quantity <= 0) return;
+
+        const availableQty = item.category === 'Mineral' ? (marketInventory[item.id] || 0) : Infinity;
+        if (quantity > availableQty) {
+            showMessage("Station does not have enough stock.");
+            return;
+        }
         
         const price = (item.basePrice || 0) * MARKET_BUY_PRICE_MODIFIER;
         const totalCost = price * quantity;
@@ -776,6 +776,7 @@ export const MarketInterface: React.FC<{
             return;
         }
 
+        // Update player state and market state together
         setPlayerState(p => {
             const newState = JSON.parse(JSON.stringify(p));
             newState.isk -= totalCost;
@@ -789,10 +790,23 @@ export const MarketInterface: React.FC<{
             } else {
                 hangar.materials[item.id] = (hangar.materials[item.id] || 0) + quantity;
             }
-
             newState.stationHangars[stationId] = hangar;
             return newState;
         });
+
+        if (item.category === 'Mineral') {
+            setStationMarketData(prevMarket => {
+                const newMarket = JSON.parse(JSON.stringify(prevMarket));
+                const stationStock = newMarket[stationId] || {};
+                stationStock[item.id] = (stationStock[item.id] || 0) - quantity;
+                if (stationStock[item.id] <= 0) {
+                    delete stationStock[item.id];
+                }
+                newMarket[stationId] = stationStock;
+                return newMarket;
+            });
+        }
+
 
         handleQuantityChange(item.id, '');
         showMessage(`Purchased ${quantity.toLocaleString()}x ${item.name}.`);
@@ -823,17 +837,45 @@ export const MarketInterface: React.FC<{
 
             return newState;
         });
+        
+        if (item.category === 'Ore') {
+            // ORE SOLD BY PLAYER -> REPROCESS
+            const oreCargo: StorageLocation = { items: [], materials: { [item.id]: quantity } };
+            const mineralsProduced = reprocessOreCargo(oreCargo);
+
+            setStationMarketData(prevMarket => {
+                const newMarket = JSON.parse(JSON.stringify(prevMarket));
+                const stationStock = newMarket[stationId] || {};
+                for (const mineralId in mineralsProduced) {
+                    stationStock[mineralId] = (stationStock[mineralId] || 0) + mineralsProduced[mineralId];
+                }
+                newMarket[stationId] = stationStock;
+                return newMarket;
+            });
+        } else {
+            // MINERAL/OTHER SOLD BY PLAYER -> ADD TO MARKET
+            setStationMarketData(prevMarket => {
+                const newMarket = JSON.parse(JSON.stringify(prevMarket));
+                const stationStock = newMarket[stationId] || {};
+                stationStock[item.id] = (stationStock[item.id] || 0) + quantity;
+                newMarket[stationId] = stationStock;
+                return newMarket;
+            });
+        }
+
 
         handleQuantityChange(item.id, '');
         showMessage(`Sold ${quantity.toLocaleString()}x ${item.name}.`);
     };
 
-    const buyItems = (buyCategory === 'blueprints' ? Object.values(BLUEPRINT_DATA) : getMarketOres(systemId))
+    const buyItems = (buyCategory === 'blueprints' 
+        ? Object.values(BLUEPRINT_DATA) 
+        : Object.keys(marketInventory).map(id => getItemData(id)).filter((o): o is Mineral => !!o && o.category === 'Mineral'))
         .sort((a, b) => (a.basePrice || 0) - (b.basePrice || 0));
     
     const sellableItems = Object.entries(stationHangar.materials)
         .map(([id, qty]) => ({ item: getItemData(id), qty }))
-        .filter(({ item }) => item?.category === 'Ore')
+        .filter(({ item }) => item?.category === 'Ore' || item?.category === 'Mineral')
         .sort((a, b) => a.item!.name.localeCompare(b.item!.name));
 
     return (
@@ -855,18 +897,25 @@ export const MarketInterface: React.FC<{
                         <h3 className="text-center text-xl mt-0 mb-4">Categories</h3>
                         <ul className="list-none p-0 m-0">
                              <li onClick={() => setBuyCategory('blueprints')} className={`p-2 cursor-pointer ${buyCategory === 'blueprints' ? 'bg-indigo-800' : 'hover:bg-gray-700'}`}>Blueprints</li>
-                             <li onClick={() => setBuyCategory('ores')} className={`p-2 cursor-pointer ${buyCategory === 'ores' ? 'bg-indigo-800' : 'hover:bg-gray-700'}`}>Ores</li>
+                             <li onClick={() => setBuyCategory('minerals')} className={`p-2 cursor-pointer ${buyCategory === 'minerals' ? 'bg-indigo-800' : 'hover:bg-gray-700'}`}>Minerals</li>
                         </ul>
                     </div>
                     <div className="bg-gray-800 border border-gray-600 p-4 flex-1 flex flex-col">
                         <div className="overflow-y-auto">
                             <table className="w-full text-left">
                                 <thead className="sticky top-0 bg-gray-800">
-                                    <tr><th className="p-2">Item</th><th className="p-2">Price (ISK)</th><th className="p-2 w-32">Quantity</th><th className="p-2 w-24">Action</th></tr>
+                                    <tr>
+                                        <th className="p-2">Item</th>
+                                        {buyCategory === 'minerals' && <th className="p-2">In Stock</th>}
+                                        <th className="p-2">Price (ISK)</th>
+                                        <th className="p-2 w-32">Quantity</th>
+                                        <th className="p-2 w-24">Action</th>
+                                    </tr>
                                 </thead>
                                 <tbody>
                                     {buyItems.map(item => {
                                         const price = (item.basePrice || 0) * MARKET_BUY_PRICE_MODIFIER;
+                                        const inStock = marketInventory[item.id] || 0;
                                         return (
                                             <tr key={item.id} className="border-b border-gray-700 hover:bg-gray-700/50">
                                                 <td className="p-2">
@@ -875,12 +924,16 @@ export const MarketInterface: React.FC<{
                                                         <span>{item.name}</span>
                                                     </div>
                                                 </td>
+                                                {buyCategory === 'minerals' && <td className="p-2">{inStock.toLocaleString()}</td>}
                                                 <td className="p-2">{price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                                                 <td className="p-2"><input type="number" value={quantities[item.id] || ''} onChange={e => handleQuantityChange(item.id, e.target.value)} className="w-full bg-gray-900 text-white p-1 border border-gray-600" min="1" /></td>
                                                 <td className="p-2"><UIButton onClick={() => handleBuy(item)} className="w-full">Buy</UIButton></td>
                                             </tr>
                                         )
                                     })}
+                                     {buyItems.length === 0 && (
+                                        <tr><td colSpan={5} className="p-4 text-center text-gray-500">No items of this category for sale.</td></tr>
+                                    )}
                                 </tbody>
                             </table>
                         </div>
@@ -915,7 +968,7 @@ export const MarketInterface: React.FC<{
                                         )
                                     })}
                                      {sellableItems.length === 0 && (
-                                        <tr><td colSpan={5} className="p-4 text-center text-gray-500">No sellable ores in your station hangar.</td></tr>
+                                        <tr><td colSpan={5} className="p-4 text-center text-gray-500">No sellable ores or minerals in your station hangar.</td></tr>
                                     )}
                                 </tbody>
                             </table>
@@ -925,6 +978,140 @@ export const MarketInterface: React.FC<{
         </div>
     );
 }
+
+// FIX: Add missing StationInterface component that was being imported in DockedView.tsx. This component serves as the main menu for the docked view.
+export const StationInterface: React.FC<{
+    stationName: string;
+    onUndock: () => void;
+    onOpenCrafting: () => void;
+    onOpenShipHangar: () => void;
+    onOpenItemHangar: () => void;
+    onOpenFitting: () => void;
+    onOpenReprocessing: () => void;
+    onOpenMarket: () => void;
+    onOpenAgent: () => void;
+    onOpenSkills: () => void;
+    showHelp: boolean;
+    onToggleHelp: () => void;
+    isHomeStation: boolean;
+    onSetHomeStation: () => void;
+}> = ({
+    stationName, onUndock, onOpenCrafting, onOpenShipHangar, onOpenItemHangar,
+    onOpenFitting, onOpenReprocessing, onOpenMarket, onOpenAgent, onOpenSkills,
+    showHelp, onToggleHelp, isHomeStation, onSetHomeStation
+}) => {
+    return (
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[200] flex flex-col items-center">
+            <h1 className="text-5xl mb-6 text-center text-shadow-lg">{stationName}</h1>
+            <div className="w-96 text-center">
+                <UIButton onClick={onOpenShipHangar} className="w-full mb-2 !text-lg !py-3">Ship Hangar</UIButton>
+                <UIButton onClick={onOpenItemHangar} className="w-full mb-2 !text-lg !py-3">Item Hangar</UIButton>
+                <UIButton onClick={onOpenFitting} className="w-full mb-2 !text-lg !py-3">Fitting</UIButton>
+                <UIButton onClick={onOpenCrafting} className="w-full mb-2 !text-lg !py-3">Industry</UIButton>
+                <UIButton onClick={onOpenReprocessing} className="w-full mb-2 !text-lg !py-3">Reprocessing</UIButton>
+                <UIButton onClick={onOpenMarket} className="w-full mb-2 !text-lg !py-3">Market</UIButton>
+                <UIButton onClick={onOpenAgent} className="w-full mb-2 !text-lg !py-3">Agents</UIButton>
+                <UIButton onClick={onOpenSkills} className="w-full mb-6 !text-lg !py-3">Skills</UIButton>
+                <UIButton onClick={onUndock} className="w-full !text-xl !py-4 !bg-red-800/80 hover:!bg-red-700/90">UNDOCK</UIButton>
+                <div className="flex justify-between items-center mt-4">
+                    <button onClick={onToggleHelp} className="text-cyan-400 hover:text-cyan-300">
+                        {showHelp ? 'Hide Help' : 'Show Help'}
+                    </button>
+                    {!isHomeStation && <button onClick={onSetHomeStation} className="text-yellow-400 hover:text-yellow-300">Set Home Station</button>}
+                </div>
+            </div>
+            {showHelp && <StationHelpOverlay onClose={onToggleHelp} />}
+        </div>
+    );
+};
+
+// FIX: Add missing BusinessMap component that was being imported in DockedView.tsx. This component displays profitable trade routes based on current market data.
+export const BusinessMap: React.FC<{
+    stationMarketData: StationMarketData;
+    onClose: () => void;
+}> = ({ stationMarketData, onClose }) => {
+    const allStations = useMemo(() => {
+        const stations: StationInfo[] = [];
+        for (const systemIdStr in SOLAR_SYSTEM_DATA) {
+            const systemId = parseInt(systemIdStr, 10);
+            const systemData = SOLAR_SYSTEM_DATA[systemId];
+            if (systemData && systemData.station) {
+                const galaxyInfo = GALAXY_DATA.systems.find(s => s.id === systemId);
+                if (galaxyInfo) {
+                    stations.push({
+                        id: `station_${systemId}_${systemData.station.name.replace(/ /g, '_')}`,
+                        name: systemData.station.name,
+                        systemName: galaxyInfo.name,
+                        systemId: systemId,
+                        x: galaxyInfo.x,
+                        y: galaxyInfo.y,
+                    });
+                }
+            }
+        }
+        return stations;
+    }, []);
+
+    const allTradeRoutes = useMemo(() => {
+        const itemIds = new Set<string>();
+        Object.values(stationMarketData).forEach(inv => Object.keys(inv).forEach(id => itemIds.add(id)));
+
+        const routes: TradeRoute[] = [];
+        for (const itemId of itemIds) {
+            const route = findBestTradeRouteForItem(itemId, stationMarketData, allStations);
+            if (route && route.profitPerM3 > 0) {
+                routes.push(route);
+            }
+        }
+        return routes.sort((a, b) => b.profitPerM3 - a.profitPerM3);
+    }, [stationMarketData, allStations]);
+
+    return (
+        <div className="absolute inset-0 bg-gray-900/95 z-[210] p-5 box-border flex flex-col allow-touch-scroll">
+            <div className="flex justify-between items-center pb-2.5 mb-5 flex-shrink-0">
+                <h2 className="text-2xl">Business Opportunity Map</h2>
+                <UIButton onClick={onClose}>Close</UIButton>
+            </div>
+            <div className="flex-grow overflow-y-auto bg-black/30 p-2 rounded">
+                <table className="w-full text-left text-sm">
+                    <thead className="sticky top-0 bg-gray-800">
+                        <tr>
+                            <th className="p-2">Item</th>
+                            <th className="p-2">Buy Location</th>
+                            <th className="p-2">Buy Price</th>
+                            <th className="p-2">Sell Location</th>
+                            <th className="p-2">Sell Price</th>
+                            <th className="p-2">Profit / Unit</th>
+                            <th className="p-2">Profit / m³</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {allTradeRoutes.slice(0, 100).map((route) => {
+                            const item = getItemData(route.itemId);
+                            return (
+                                <tr key={route.itemId} className="border-b border-gray-700 hover:bg-gray-700/20">
+                                    <td className="p-2 flex items-center gap-2">
+                                        <ItemIcon item={item} size="small" />
+                                        {item?.name || route.itemId}
+                                    </td>
+                                    <td className="p-2">{route.buyStation.systemName}</td>
+                                    <td className="p-2 text-red-400">{route.buyPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                                    <td className="p-2">{route.sellStation.systemName}</td>
+                                    <td className="p-2 text-green-400">{route.sellPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                                    <td className="p-2 text-yellow-400">{route.profitPerUnit.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                                    <td className="p-2 text-cyan-400 font-bold">{route.profitPerM3.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                                </tr>
+                            );
+                        })}
+                        {allTradeRoutes.length === 0 && (
+                            <tr><td colSpan={7} className="text-center text-gray-500 p-8">No profitable trade routes found with current market data.</td></tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
 
 export const StationHelpOverlay: React.FC<{onClose: () => void}> = ({onClose}) => {
     // Approximate vertical center of the button list, adjusted for the title above it.
@@ -970,54 +1157,7 @@ export const StationHelpOverlay: React.FC<{onClose: () => void}> = ({onClose}) =
                     Reprocess
                 </div>
                 <div className="absolute h-px w-[9rem] bg-red-400" style={{ top: buttonCenterY(6), right: 'calc(50% + 9rem)' }}></div>
-            </div>
-        </div>
-    );
-};
-
-
-export const StationInterface: React.FC<{
-    stationName: string;
-    onUndock: () => void;
-    onOpenCrafting: () => void;
-    onOpenShipHangar: () => void;
-    onOpenItemHangar: () => void;
-    onOpenFitting: () => void;
-    onOpenReprocessing: () => void;
-    onOpenMarket: () => void;
-    onOpenAgent: () => void;
-    onOpenSkills: () => void;
-    showHelp: boolean;
-    onToggleHelp: () => void;
-    onSetHomeStation: () => void;
-    isHomeStation: boolean;
-}> = ({ stationName, onUndock, onOpenCrafting, onOpenShipHangar, onOpenItemHangar, onOpenFitting, onOpenReprocessing, onOpenMarket, onOpenAgent, onOpenSkills, showHelp, onToggleHelp, onSetHomeStation, isHomeStation }) => {
-    return (
-        <div className="absolute inset-0 z-[200] p-12 box-border flex flex-col items-center justify-center">
-            {showHelp && <StationHelpOverlay onClose={onToggleHelp} />}
-             <div className="absolute top-5 right-5 z-[202]">
-                <button 
-                    onClick={onToggleHelp} 
-                    className="w-10 h-10 bg-gray-700/80 rounded-full border border-gray-400 text-white text-2xl font-bold flex items-center justify-center hover:bg-gray-600/90"
-                    aria-label="Toggle Help"
-                >
-                    ?
-                </button>
-            </div>
-            <h2 className="text-4xl mb-10 text-center">Docked at {stationName}</h2>
-            <div className="flex flex-col items-center gap-4">
-                <UIButton onClick={onUndock} className="w-64 !text-base">Back to Space (Undock)</UIButton>
-                <UIButton onClick={onOpenShipHangar} className="w-64 !text-base">Ship Hangar</UIButton>
-                <UIButton onClick={onOpenItemHangar} className="w-64 !text-base">Item Hangar</UIButton>
-                <UIButton onClick={onOpenFitting} className="w-64 !text-base">Fitting</UIButton>
-                <UIButton onClick={onOpenCrafting} className="w-64 !text-base">Crafting</UIButton>
-                <UIButton onClick={onOpenReprocessing} className="w-64 !text-base">Reprocessing</UIButton>
-                <UIButton onClick={onOpenMarket} className="w-64 !text-base">Market</UIButton>
-                <UIButton onClick={onOpenAgent} className="w-64 !text-base">Agent Missions</UIButton>
-                <UIButton onClick={onOpenSkills} className="w-64 !text-base">Skills</UIButton>
-                <UIButton onClick={onSetHomeStation} disabled={isHomeStation} className="w-64 !text-base">
-                    {isHomeStation ? 'Current Home Station' : 'Set as Home Station'}
-                </UIButton>
+                <div className="absolute w-px h-[16.25rem] bg-red-400" style={{ top: buttonCenterY(1), right: 'calc(50% + 9rem)' }}></div>
             </div>
         </div>
     );

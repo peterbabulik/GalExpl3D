@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { Ship, AnyItem, Module } from './types';
-import { SHIP_DATA, getItemData } from './constants';
+import { SHIP_DATA, getItemData, GALAXY_DATA } from './constants';
 
 export interface Enemy {
     object3D: THREE.Object3D;
@@ -27,33 +27,40 @@ const APPROACH_DISTANCE = 1000;
 const ENEMY_SPEED = 150; // Slower than player base speed
 const ENEMY_AGILITY = 4.0; // Worse than rookie ship
 
-export const systemPirateConfig: Record<number, { type: 'small' | 'medium' | 'large', count: number }> = {
-    27: { type: 'small', count: 3 },  // Test
-    28: { type: 'medium', count: 2 }, // Test2
-    29: { type: 'large', count: 1 },  // Test3
-};
-
 export function spawnEnemies(scene: THREE.Scene, systemId: number): Enemy[] {
     const enemies: Enemy[] = [];
+    const system = GALAXY_DATA.systems.find(s => s.id === systemId);
 
-    const config = systemPirateConfig[systemId];
-    if (!config) {
+    // Only spawn pirates in nullsec systems (sec <= 0.0)
+    if (!system || system.security > 0.0) {
         return [];
     }
 
+    const pirateCount = Math.floor(Math.random() * 6) + 2; // 2 to 7 pirates
     const pirateGeometry = new THREE.ConeGeometry(15, 40, 4);
     const pirateMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000, metalness: 0.5, roughness: 0.6 });
 
-    for (let i = 0; i < config.count; i++) {
+    for (let i = 0; i < pirateCount; i++) {
         let shipId: string, fitting: Enemy['fitting'], cargo: Enemy['cargo'], bounty: number, name: string, scale: number;
+        let enemyType: 'small' | 'medium' | 'large';
 
-        switch (config.type) {
+        // Weighted random spawn type
+        const rand = Math.random();
+        if (rand < 0.6) { // 60% chance for small
+            enemyType = 'small';
+        } else if (rand < 0.9) { // 30% chance for medium
+            enemyType = 'medium';
+        } else { // 10% chance for large
+            enemyType = 'large';
+        }
+
+        switch (enemyType) {
             case 'medium':
-                shipId = 'ship_hurricane';
-                fitting = { high: Array(8).fill('mod_125mm_autocannon_i') };
+                shipId = 'ship_stabber';
+                fitting = { high: Array(6).fill('mod_125mm_autocannon_i') };
                 cargo = { items: [], materials: { 'ammo_fusion_s': 100 } };
                 bounty = 20000;
-                name = `Medium Test Pirate ${i + 1}`;
+                name = `Guristas Medium Pirate ${i + 1}`;
                 scale = 2.5;
                 break;
             case 'large':
@@ -61,17 +68,18 @@ export function spawnEnemies(scene: THREE.Scene, systemId: number): Enemy[] {
                 fitting = { high: Array(8).fill('mod_125mm_autocannon_i') };
                 cargo = { items: [], materials: { 'ammo_fusion_s': 100 } };
                 bounty = 50000;
-                name = `Large Test Pirate ${i + 1}`;
+                name = `Guristas Large Pirate ${i + 1}`;
                 scale = 4.0;
                 break;
             case 'small':
             default:
-                shipId = 'ship_rookie';
+                shipId = 'ship_rifter'; // Use Rifter for a bit more of a challenge
                 fitting = { high: ['mod_125mm_autocannon_i', 'mod_125mm_autocannon_i'] };
                 cargo = { items: [], materials: { 'ammo_fusion_s': 1000 } };
                 bounty = 5000;
-                name = `Small Test Pirate ${i + 1}`;
-                scale = 1.0;
+                name = `Guristas Small Pirate ${i + 1}`;
+                scale = 1.2;
+                enemyType = 'small';
                 break;
         }
         
@@ -82,7 +90,7 @@ export function spawnEnemies(scene: THREE.Scene, systemId: number): Enemy[] {
         enemyMesh.scale.set(scale, scale, scale);
         
         const angle = Math.random() * Math.PI * 2;
-        const radius = THREE.MathUtils.randFloat(15000, 20000);
+        const radius = THREE.MathUtils.randFloat(15000, 35000);
         const x = Math.cos(angle) * radius;
         const z = Math.sin(angle) * radius;
         const y = THREE.MathUtils.randFloatSpread(400);
@@ -106,7 +114,7 @@ export function spawnEnemies(scene: THREE.Scene, systemId: number): Enemy[] {
         enemies.push({
             object3D: enemyMesh,
             shipData: shipData,
-            type: config.type,
+            type: enemyType,
             fitting: fitting,
             cargo: cargo,
             aiState: 'approaching',
@@ -117,6 +125,7 @@ export function spawnEnemies(scene: THREE.Scene, systemId: number): Enemy[] {
 
     return enemies;
 }
+
 
 export function updateEnemies(enemies: Enemy[], player: THREE.Object3D, delta: number) {
     if (!player) return;

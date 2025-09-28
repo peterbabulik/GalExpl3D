@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { GameState } from './types';
-import type { PlayerState, TooltipData, Target, TargetData, DockingData, NavObject, NavPanelItem, StorageLocation, Module, Ore, AgentData, MissionData, SolarSystemData, Drone, AnyItem, ConsoleMessage, ConsoleMessageType, Ammunition } from './types';
+import type { PlayerState, TooltipData, Target, TargetData, DockingData, NavObject, NavPanelItem, StorageLocation, Module, Ore, AgentData, MissionData, SolarSystemData, Drone, AnyItem, ConsoleMessage, ConsoleMessageType, Ammunition, NpcMinerInfo, NpcMinerState, StationMarketData, CorporationData, NpcTraderData, StationInfo, NpcSupplyTraderData } from './types';
 import { 
     GALAXY_DATA,
     SOLAR_SYSTEM_DATA,
     SHIP_DATA,
     BLUEPRINT_DATA,
     INITIAL_PLAYER_STATE,
+    CORPORATION_DATA,
     getItemData,
 } from './constants';
 import {
@@ -30,13 +32,18 @@ import { DockedView } from './DockedView';
 import { SKILL_DATA, addSkillXp } from './skills';
 import { ConsoleUI } from './Console';
 
-import { ASTEROID_BELT_TYPES } from './ores';
+import { ASTEROID_BELT_TYPES, ORE_DATA, reprocessOreCargo } from './ores';
 import { createAsteroidBelt } from './asteroids';
 import { startWarp, updateWarp, isWarping } from './warp';
 import { startMiningAnimation, updateMiningAnimation, stopMiningAnimation } from './mining-animation';
 import { GalaxyMap } from './GalaxyMap';
 import { spawnEnemies, updateEnemies, createEnemyLoot, updateEnemyAttacks } from './enemies';
 import type { Enemy } from './enemies';
+import { updateNpcMiners } from './npc-miners';
+import { updateNpcTraders } from './npc-traders';
+import { updateNpcSupplyTraders } from './npc-supply-trader';
+import { updateCorporationsAI } from './corporation-ai';
+import type { NpcMiner } from './types';
 import { calculateShipStats } from './stat-calculator';
 
 
@@ -120,6 +127,7 @@ const MINING_RANGE = 1500;
 const LOOT_RANGE = 2500;
 const ENEMY_ATTACK_COOLDOWN = 3000; // ms
 const MAX_CONSOLE_MESSAGES = 100;
+const GEMINI_PLAYER_TURN_INTERVAL = 30000; // 30 seconds
 
 const WEAPON_SUBCATEGORY_TO_SKILL_MAP: Record<string, string> = {
     'projectile': 'skill_small_projectiles',
@@ -217,6 +225,16 @@ export default function App() {
     const [showDeathScreen, setShowDeathScreen] = useState(false);
     const [consoleMessages, setConsoleMessages] = useState<ConsoleMessage[]>([]);
 
+    // Global NPC & Market State
+    const [globalNpcMinerData, setGlobalNpcMinerData] = useState<Record<string, NpcMinerInfo>>({});
+    const [stationMarketData, setStationMarketData] = useState<StationMarketData>({});
+    const [globalCorporationData, setGlobalCorporationData] = useState<Record<string, CorporationData>>({});
+    const [globalNpcTraderData, setGlobalNpcTraderData] = useState<Record<string, NpcTraderData>>({});
+    const [globalNpcSupplyTraderData, setGlobalNpcSupplyTraderData] = useState<Record<string, NpcSupplyTraderData>>({});
+
+    // 3D Models
+    const [ventureModel, setVentureModel] = useState<THREE.Group | null>(null);
+
     // Persistence State
     const [isLoading, setIsLoading] = useState(true);
     const [showNamePrompt, setShowNamePrompt] = useState(false);
@@ -232,6 +250,7 @@ export default function App() {
         asteroids: THREE.Mesh[],
         stations: THREE.Object3D[],
         enemies: Enemy[],
+        npcMiners: NpcMiner[],
         wrecks: THREE.Object3D[],
         drones: { object3D: THREE.Mesh, orbitAngle: number, orbitRadius: number, id: string }[],
         navObjects: NavObject[],
@@ -240,7 +259,7 @@ export default function App() {
         dockedStation: THREE.Object3D | null,
         isMouseLooking: boolean,
     }>({
-        planets: [], asteroids: [], stations: [], enemies: [], wrecks: [], drones: [], navObjects: [],
+        planets: [], asteroids: [], stations: [], enemies: [], npcMiners: [], wrecks: [], drones: [], navObjects: [],
         targetedObject: null, lookAtTarget: null, dockedStation: null,
         isMouseLooking: false
     });
@@ -256,6 +275,11 @@ export default function App() {
     const weaponCycleTimersRef = useRef<Record<string, number>>({});
     // FIX: Add ref for activeModuleSlots to be used in setInterval to access latest state.
     const activeModuleSlotsRef = useRef(activeModuleSlots);
+    const globalNpcMinerDataRef = useRef<Record<string, NpcMinerInfo>>({});
+    const stationMarketDataRef = useRef<StationMarketData>({});
+    const globalCorporationDataRef = useRef<Record<string, CorporationData>>({});
+    const globalNpcTraderDataRef = useRef<Record<string, NpcTraderData>>({});
+    const globalNpcSupplyTraderDataRef = useRef<Record<string, NpcSupplyTraderData>>({});
     
     // Refs for autosave interval
     const gameStateRef = useRef(gameState);
@@ -268,6 +292,8 @@ export default function App() {
     const isRespawningRef = useRef(false);
     const isDyingRef = useRef(false);
     const isInitialLoadDockingRef = useRef(false);
+    const galaxyDataRef = useRef(GALAXY_DATA);
+    const allStationsRef = useRef<StationInfo[]>([]);
 
     // Update refs whenever state changes for the interval to access
     useEffect(() => {
@@ -276,6 +302,11 @@ export default function App() {
     useEffect(() => { playerStateRef.current = playerState; }, [playerState]);
     useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
     useEffect(() => { activeSystemIdRef.current = activeSystemId; }, [activeSystemId]);
+    useEffect(() => { stationMarketDataRef.current = stationMarketData; }, [stationMarketData]);
+    useEffect(() => { globalNpcMinerDataRef.current = globalNpcMinerData; }, [globalNpcMinerData]);
+    useEffect(() => { globalCorporationDataRef.current = globalCorporationData; }, [globalCorporationData]);
+    useEffect(() => { globalNpcTraderDataRef.current = globalNpcTraderData; }, [globalNpcTraderData]);
+    useEffect(() => { globalNpcSupplyTraderDataRef.current = globalNpcSupplyTraderData; }, [globalNpcSupplyTraderData]);
     // FIX: Update activeModuleSlotsRef when activeModuleSlots state changes.
     useEffect(() => { activeModuleSlotsRef.current = activeModuleSlots; }, [activeModuleSlots]);
 
@@ -298,10 +329,12 @@ export default function App() {
 
     // Load game on initial mount
     useEffect(() => {
+        let parsedData: any = null;
+        const isNewGame = !localStorage.getItem(SAVE_KEY);
         try {
             const savedData = localStorage.getItem(SAVE_KEY);
             if (savedData) {
-                const parsedData = JSON.parse(savedData);
+                parsedData = JSON.parse(savedData);
                 if (parsedData.playerState && parsedData.playerState.playerName) {
                     
                     const expandedPlayerState = expandPlayerStateOnLoad(parsedData.playerState);
@@ -323,6 +356,20 @@ export default function App() {
                     }
                     
                     setPlayerState(p => ({...p, ...expandedPlayerState}));
+                    
+                    if (parsedData.stationMarketData) {
+                        setStationMarketData(parsedData.stationMarketData);
+                    }
+                    if (parsedData.globalCorporationData) {
+                        setGlobalCorporationData(parsedData.globalCorporationData);
+                    }
+                    if (parsedData.globalNpcTraderData) {
+                        setGlobalNpcTraderData(parsedData.globalNpcTraderData);
+                    }
+                    if (parsedData.globalNpcSupplyTraderData) {
+                        setGlobalNpcSupplyTraderData(parsedData.globalNpcSupplyTraderData);
+                    }
+
 
                     // Restore location and game state
                     // `activeSystemId` must be set first for the scene to load
@@ -361,6 +408,74 @@ export default function App() {
             console.error("Failed to load game data:", error);
             setShowNamePrompt(true); // Load failed, start new game
         } finally {
+            // --- Global NPC and Economy Initialization ---
+            const initialMiners: Record<string, NpcMinerInfo> = {};
+            for (const systemIdStr in SOLAR_SYSTEM_DATA) {
+                const systemId = parseInt(systemIdStr, 10);
+                const systemData = SOLAR_SYSTEM_DATA[systemId];
+                const hasAsteroids = !!systemData.asteroidBeltType;
+
+                if (systemData.station && hasAsteroids) {
+                    const stationId = getStationId(systemId, systemData.station.name);
+                    for (let i = 0; i < 5; i++) { // 5 miners per eligible system
+                        const uuid = THREE.MathUtils.generateUUID();
+                        initialMiners[uuid] = {
+                            uuid,
+                            systemId,
+                            homeStationId: stationId,
+                            name: `Mining Services Miner ${i + 1}`,
+                            shipName: 'ship_venture',
+                            state: 'IDLE',
+                            cargo: { items: [], materials: {} },
+                            miningTargetName: null,
+                        };
+                    }
+                }
+            }
+            setGlobalNpcMinerData(initialMiners);
+            
+            const corporationsLoaded = parsedData?.globalCorporationData && Object.keys(parsedData.globalCorporationData).length > 0;
+            // Initialize corporations and traders if not loaded from save
+            if (!corporationsLoaded) {
+                setGlobalCorporationData(JSON.parse(JSON.stringify(CORPORATION_DATA)));
+
+                const initialTraders: Record<string, NpcTraderData> = {};
+                const initialSupplyTraders: Record<string, NpcSupplyTraderData> = {};
+                const corps = Object.values(CORPORATION_DATA);
+                for (let i = 0; i < corps.length; i++) {
+                    const corp = corps[i];
+                    const trader_uuid = THREE.MathUtils.generateUUID();
+                    initialTraders[trader_uuid] = {
+                        uuid: trader_uuid,
+                        corporationId: corp.id,
+                        name: `${corp.name} Trader`,
+                        isk: 1000000,
+                        shipId: 'ship_badger',
+                        cargo: { items: [], materials: {} },
+                        state: 'IDLE',
+                        currentSystemId: parseInt(corp.homeStationId.split('_')[1]),
+                        currentLocationId: corp.homeStationId,
+                        currentRoute: null,
+                        stateTimer: isNewGame ? 300 : 10, // 5 min delay for new game
+                    };
+                    const supply_trader_uuid = THREE.MathUtils.generateUUID();
+                    initialSupplyTraders[supply_trader_uuid] = {
+                        uuid: supply_trader_uuid,
+                        corporationId: corp.id,
+                        name: `${corp.name} Supply Trader`,
+                        shipId: 'ship_badger',
+                        cargo: { items: [], materials: {} },
+                        state: 'IDLE',
+                        currentSystemId: parseInt(corp.homeStationId.split('_')[1]),
+                        currentLocationId: corp.homeStationId,
+                        currentTarget: null,
+                        stateTimer: isNewGame ? 60 : 10,
+                    };
+                }
+                 setGlobalNpcTraderData(initialTraders);
+                 setGlobalNpcSupplyTraderData(initialSupplyTraders);
+            }
+
             setIsLoading(false);
         }
     }, []);
@@ -377,6 +492,10 @@ export default function App() {
                         shipPosition: null,
                         shipQuaternion: null,
                         dockedStationName: null,
+                        stationMarketData: stationMarketDataRef.current,
+                        globalCorporationData: globalCorporationDataRef.current,
+                        globalNpcTraderData: globalNpcTraderDataRef.current,
+                        globalNpcSupplyTraderData: globalNpcSupplyTraderDataRef.current,
                     };
 
                     if (gameStateRef.current === GameState.SOLAR_SYSTEM && threeRef.current.player) {
@@ -403,6 +522,286 @@ export default function App() {
         });
         setShowNamePrompt(false);
     };
+
+    // --- Load 3D Models ---
+    useEffect(() => {
+        const loader = new GLTFLoader();
+        loader.load('/venture.glb', (gltf) => {
+            setVentureModel(gltf.scene);
+        }, undefined, (error) => {
+            console.error('An error happened while loading the Venture model:', error);
+        });
+    }, []);
+    
+    // --- Pre-calculate station list for simulations ---
+    useEffect(() => {
+        const stations: StationInfo[] = [];
+        for (const systemIdStr in SOLAR_SYSTEM_DATA) {
+            const systemId = parseInt(systemIdStr, 10);
+            const systemData = SOLAR_SYSTEM_DATA[systemId];
+            if (systemData && systemData.station) {
+                const galaxyInfo = GALAXY_DATA.systems.find(s => s.id === systemId);
+                if (galaxyInfo) {
+                    stations.push({
+                        id: getStationId(systemId, systemData.station.name),
+                        name: systemData.station.name,
+                        systemName: galaxyInfo.name,
+                        systemId: systemId,
+                        x: galaxyInfo.x,
+                        y: galaxyInfo.y,
+                    });
+                }
+            }
+        }
+        allStationsRef.current = stations;
+    }, []);
+
+    // --- Background NPC Miner Simulation ---
+    useEffect(() => {
+        const TICK_INTERVAL_SECONDS = 5;
+    
+        const getTimerForState = (state: NpcMinerState): number => {
+            switch (state) {
+                case 'IDLE': return 30;
+                case 'UNDOCKING': return 10;
+                case 'TRAVELING_TO_BELT': return 20;
+                case 'RETURNING_TO_STATION': return 20;
+                case 'MINING': return 300; // 5 minutes
+                case 'DOCKING': return 10;
+                default: return 30;
+            }
+        };
+    
+        const backgroundNpcUpdateInterval = setInterval(() => {
+            if (isLoading || !playerStateRef.current.playerName) return;
+    
+            const currentSystemId = activeSystemIdRef.current;
+            const allMiners = globalNpcMinerDataRef.current;
+            const updatedMiners: Record<string, NpcMinerInfo> = { ...allMiners };
+            const updatedMarketData: StationMarketData = JSON.parse(JSON.stringify(stationMarketDataRef.current));
+            const updatedCorporations: Record<string, CorporationData> = JSON.parse(JSON.stringify(globalCorporationDataRef.current));
+            let hasMinerChanged = false;
+            let hasMarketChanged = false;
+            let hasCorpChanged = false;
+
+            for (const uuid in allMiners) {
+                if (allMiners[uuid].systemId === currentSystemId) {
+                    continue; // Skip miners in the player's current system
+                }
+    
+                let minerInfo = { ...allMiners[uuid] }; // Create a mutable copy
+    
+                // Initialize timer if it's new to the background simulation
+                if (typeof minerInfo.stateTimer !== 'number') {
+                    minerInfo.stateTimer = getTimerForState(minerInfo.state);
+                }
+    
+                // Tick down the timer
+                minerInfo.stateTimer -= TICK_INTERVAL_SECONDS;
+                hasMinerChanged = true;
+    
+                // --- Handle MINING state separately to fill cargo ---
+                if (minerInfo.state === 'MINING') {
+                    const shipData = SHIP_DATA[minerInfo.shipName];
+                    if (shipData) {
+                        const cargoCapacity = shipData.attributes.cargoCapacity + (shipData.attributes.oreHold || 0);
+                        let currentVolume = 0;
+                        Object.entries(minerInfo.cargo.materials).forEach(([oreId, qty]) => {
+                            currentVolume += (getItemData(oreId)?.volume || 0.1) * qty;
+                        });
+    
+                        if (currentVolume >= cargoCapacity) {
+                            // Cargo is full, override timer and transition immediately
+                            minerInfo.state = 'RETURNING_TO_STATION';
+                            minerInfo.miningTargetName = null;
+                            minerInfo.stateTimer = getTimerForState('RETURNING_TO_STATION');
+                        } else {
+                            // Add some ore
+                            const oreId = Object.keys(ORE_DATA).find(id => ORE_DATA[id].name === minerInfo.miningTargetName) || 'ore_veldspar';
+                            const amountToAdd = 500; // units per tick
+                            const newCargo = { ...minerInfo.cargo, materials: { ...minerInfo.cargo.materials } };
+                            newCargo.materials[oreId] = (newCargo.materials[oreId] || 0) + amountToAdd;
+                            minerInfo.cargo = newCargo;
+                        }
+                    }
+                }
+    
+                // --- Handle state transition if timer has expired ---
+                if (minerInfo.stateTimer <= 0) {
+                    switch (minerInfo.state) {
+                        case 'IDLE':
+                            minerInfo.state = 'UNDOCKING';
+                            break;
+                        case 'UNDOCKING':
+                            minerInfo.state = 'TRAVELING_TO_BELT';
+                            break;
+                        case 'TRAVELING_TO_BELT':
+                            minerInfo.state = 'MINING';
+                            const systemData = SOLAR_SYSTEM_DATA[minerInfo.systemId];
+                            const beltType = systemData?.asteroidBeltType;
+                            if (beltType) {
+                                const ores = Object.keys(ASTEROID_BELT_TYPES[beltType]?.oreDistribution || {});
+                                if (ores.length > 0) {
+                                    const oreId = ores[Math.floor(Math.random() * ores.length)];
+                                    minerInfo.miningTargetName = getItemData(oreId)?.name || null;
+                                }
+                            }
+                            break;
+                        case 'MINING': // This case is for when the 5-min timer runs out
+                            minerInfo.state = 'RETURNING_TO_STATION';
+                            minerInfo.miningTargetName = null;
+                            break;
+                        case 'RETURNING_TO_STATION':
+                            minerInfo.state = 'DOCKING';
+                            break;
+                        case 'DOCKING':
+                            minerInfo.state = 'IDLE';
+                            // "Sell" ore to station, which now auto-reprocesses it
+                            const stationId = minerInfo.homeStationId;
+                            if (stationId && Object.keys(minerInfo.cargo.materials).length > 0) {
+                                let totalValue = 0;
+                                for (const oreId in minerInfo.cargo.materials) {
+                                    const quantity = minerInfo.cargo.materials[oreId];
+                                    const oreData = getItemData(oreId);
+                                    totalValue += (oreData?.basePrice || 0) * quantity;
+                                }
+
+                                if (totalValue > 0 && updatedCorporations['corp_mining_services']) {
+                                    updatedCorporations['corp_mining_services'].isk += totalValue;
+                                    hasCorpChanged = true;
+                                }
+
+                                const mineralsProduced = reprocessOreCargo(minerInfo.cargo);
+                                const stationMarket = updatedMarketData[stationId] || {};
+                                for (const mineralId in mineralsProduced) {
+                                    stationMarket[mineralId] = (stationMarket[mineralId] || 0) + mineralsProduced[mineralId];
+                                }
+                                updatedMarketData[stationId] = stationMarket;
+                                hasMarketChanged = true;
+                            }
+                            minerInfo.cargo = { items: [], materials: {} }; // Clear cargo
+                            break;
+                    }
+                    minerInfo.stateTimer = getTimerForState(minerInfo.state); // Reset timer for new state
+                }
+    
+                updatedMiners[uuid] = minerInfo;
+            }
+    
+            if (hasMinerChanged) {
+                globalNpcMinerDataRef.current = updatedMiners;
+                setGlobalNpcMinerData(updatedMiners);
+            }
+            if (hasMarketChanged) {
+                stationMarketDataRef.current = updatedMarketData;
+                setStationMarketData(updatedMarketData);
+            }
+            if (hasCorpChanged) {
+                globalCorporationDataRef.current = updatedCorporations;
+                setGlobalCorporationData(updatedCorporations);
+            }
+        }, TICK_INTERVAL_SECONDS * 1000);
+    
+        return () => clearInterval(backgroundNpcUpdateInterval);
+    }, [isLoading]);
+    
+    // --- Background NPC Trader Simulation ---
+    useEffect(() => {
+        const TICK_INTERVAL_SECONDS = 10;
+
+        const traderInterval = setInterval(() => {
+             if (isLoading || !playerStateRef.current.playerName) return;
+
+             const { updatedTraders, updatedCorporations, updatedMarketData } = updateNpcTraders(
+                globalNpcTraderDataRef.current,
+                globalCorporationDataRef.current,
+                stationMarketDataRef.current,
+                allStationsRef.current,
+                TICK_INTERVAL_SECONDS
+             );
+             
+             // Check if any data actually changed to prevent unnecessary re-renders
+             if (JSON.stringify(updatedTraders) !== JSON.stringify(globalNpcTraderDataRef.current)) {
+                globalNpcTraderDataRef.current = updatedTraders;
+                setGlobalNpcTraderData(updatedTraders);
+             }
+             if (JSON.stringify(updatedCorporations) !== JSON.stringify(globalCorporationDataRef.current)) {
+                globalCorporationDataRef.current = updatedCorporations;
+                setGlobalCorporationData(updatedCorporations);
+             }
+             if (JSON.stringify(updatedMarketData) !== JSON.stringify(stationMarketDataRef.current)) {
+                stationMarketDataRef.current = updatedMarketData;
+                setStationMarketData(updatedMarketData);
+             }
+
+        }, TICK_INTERVAL_SECONDS * 1000);
+
+        return () => clearInterval(traderInterval);
+    }, [isLoading]);
+
+    // --- Background NPC Supply Trader Simulation ---
+    useEffect(() => {
+        const TICK_INTERVAL_SECONDS = 12;
+
+        const supplyTraderInterval = setInterval(() => {
+            if (isLoading || !playerStateRef.current.playerName) return;
+
+            const { updatedTraders, updatedCorporations, updatedMarketData } = updateNpcSupplyTraders(
+                globalNpcSupplyTraderDataRef.current,
+                globalCorporationDataRef.current,
+                stationMarketDataRef.current,
+                allStationsRef.current,
+                TICK_INTERVAL_SECONDS
+            );
+            
+            if (JSON.stringify(updatedTraders) !== JSON.stringify(globalNpcSupplyTraderDataRef.current)) {
+                globalNpcSupplyTraderDataRef.current = updatedTraders;
+                setGlobalNpcSupplyTraderData(updatedTraders);
+            }
+            if (JSON.stringify(updatedCorporations) !== JSON.stringify(globalCorporationDataRef.current)) {
+                globalCorporationDataRef.current = updatedCorporations;
+                setGlobalCorporationData(updatedCorporations);
+            }
+            if (JSON.stringify(updatedMarketData) !== JSON.stringify(stationMarketDataRef.current)) {
+                stationMarketDataRef.current = updatedMarketData;
+                setStationMarketData(updatedMarketData);
+            }
+
+        }, TICK_INTERVAL_SECONDS * 1000);
+
+        return () => clearInterval(supplyTraderInterval);
+    }, [isLoading]);
+
+
+    // --- Background Corporation AI Simulation (Tactical) ---
+    useEffect(() => {
+        const TICK_INTERVAL_SECONDS = 15;
+
+        const corpAiInterval = setInterval(() => {
+            if (isLoading || !playerStateRef.current.playerName) return;
+
+            const { updatedCorporations, updatedMarketData } = updateCorporationsAI(
+                globalCorporationDataRef.current,
+                stationMarketDataRef.current,
+                allStationsRef.current,
+                TICK_INTERVAL_SECONDS,
+                GALAXY_DATA
+            );
+
+            if (JSON.stringify(updatedCorporations) !== JSON.stringify(globalCorporationDataRef.current)) {
+                globalCorporationDataRef.current = updatedCorporations;
+                setGlobalCorporationData(updatedCorporations);
+            }
+            if (JSON.stringify(updatedMarketData) !== JSON.stringify(stationMarketDataRef.current)) {
+                stationMarketDataRef.current = updatedMarketData;
+                setStationMarketData(updatedMarketData);
+            }
+
+        }, TICK_INTERVAL_SECONDS * 1000);
+        
+        return () => clearInterval(corpAiInterval);
+    }, [isLoading]);
+
 
     // --- STATE-MUTATING HANDLERS ---
      const fadeTransition = useCallback((callback: () => void) => {
@@ -1047,19 +1446,41 @@ export default function App() {
     // Effect to handle target destruction from any source
     useEffect(() => {
         if (targetData.selectedTarget?.type === 'pirate' && targetData.selectedTarget?.hp && targetData.selectedTarget.hp.hull <= 0) {
-            console.log(`${targetData.selectedTarget.name} destroyed!`);
-
             const enemyIndex = gameDataRef.current.enemies.findIndex(e => e.object3D.uuid === targetData.selectedTarget?.uuid);
             if (enemyIndex === -1) return;
 
             const enemy = gameDataRef.current.enemies[enemyIndex];
             const lastPosition = enemy.object3D.position.clone();
             
-            // 1. Add bounty
+            // 1. Add bounty and update mission progress
             setPlayerState(p => {
+                let newState = JSON.parse(JSON.stringify(p));
                 const bounty = enemy.bounty;
                 addConsoleMessage(`Received ${bounty.toLocaleString()} ISK bounty for destroying ${enemy.object3D.userData.name}.`, 'bounty');
-                return { ...p, isk: p.isk + bounty };
+                newState.isk += bounty;
+
+                // Mission progress update logic
+                const objectiveKey = `destroy_pirate_${enemy.type}`;
+                const activeCombatMission = newState.activeMissions.find((m: MissionData) => 
+                    m.type === 'combat' &&
+                    m.locationSystemId === activeSystemIdRef.current &&
+                    m.objectives[objectiveKey]
+                );
+
+                if (activeCombatMission) {
+                    if (!activeCombatMission.progress) {
+                        activeCombatMission.progress = {};
+                    }
+                    const currentProgress = activeCombatMission.progress[objectiveKey] || 0;
+                    const required = activeCombatMission.objectives[objectiveKey];
+                    
+                    if (currentProgress < required) {
+                        activeCombatMission.progress[objectiveKey] = currentProgress + 1;
+                        addConsoleMessage(`Mission objective updated: ${activeCombatMission.progress[objectiveKey]} / ${required} ${enemy.type} pirates destroyed.`, 'system');
+                    }
+                }
+
+                return newState;
             });
 
             // 2. Create loot wreck
@@ -1257,7 +1678,7 @@ export default function App() {
         }
     }, [handleToggleWeaponGroup, handleMineSingleCycle, handleToggleModule]);
 
-    const switchToGalaxyMap = () => {
+    const switchToGalaxyMap = useCallback(() => {
          if (gameState === GameState.TRANSITIONING) return;
          fadeTransition(() => {
             setTargetData({ object: null, screenX: 0, screenY: 0, selectedTarget: null });
@@ -1267,9 +1688,9 @@ export default function App() {
             setActiveSystemName('Galaxy Map');
             setGameState(GameState.GALAX_MAP);
         });
-    }
+    }, [fadeTransition, gameState]);
 
-    const handleSystemSelect = (systemId: number) => {
+    const handleSystemSelect = useCallback((systemId: number) => {
         const system = getSystemById(systemId);
         if (!system) return;
 
@@ -1279,7 +1700,7 @@ export default function App() {
             setActiveSystemName(system.name);
             setGameState(GameState.SOLAR_SYSTEM);
         });
-    };
+    }, [fadeTransition]);
 
     const handleSetHomeStation = useCallback(() => {
         if (gameState !== GameState.DOCKED || !activeSystemId || !gameDataRef.current.dockedStation) return;
@@ -1296,11 +1717,72 @@ export default function App() {
         gameDataRef.current.dockedStation = null;
         fadeTransition(() => setGameState(GameState.SOLAR_SYSTEM));
     }, [addConsoleMessage, fadeTransition]);
+    
+    const handleAuthorizeCorpShipConstruction = useCallback((corpId: string, shipId: string) => {
+        const blueprintId = `bp_${shipId.replace('ship_', '')}`;
+        const blueprint = BLUEPRINT_DATA[blueprintId];
+        if (!blueprint) {
+            addConsoleMessage(`Error: Could not find blueprint for ${getItemData(shipId)?.name}.`, 'system');
+            return;
+        }
+    
+        setGlobalCorporationData(corps => {
+            const newCorps = JSON.parse(JSON.stringify(corps));
+            const targetCorp = newCorps[corpId];
+            if (!targetCorp) return corps;
+
+            // Add the ship to the build queue
+            if (!targetCorp.buildQueue) {
+                targetCorp.buildQueue = [];
+            }
+            targetCorp.buildQueue.push(shipId);
+
+            if (!targetCorp.buyOrders) {
+                targetCorp.buyOrders = {};
+            }
+
+            let ordersPlaced = 0;
+            for (const matId in blueprint.materials) {
+                const required = blueprint.materials[matId];
+                const available = targetCorp.assetHangar.materials[matId] || 0;
+                const needed = required - available;
+                
+                if (needed > 0) {
+                    targetCorp.buyOrders[matId] = (targetCorp.buyOrders[matId] || 0) + needed;
+                    ordersPlaced++;
+                }
+            }
+            
+            if (ordersPlaced > 0) {
+                 addConsoleMessage(`Authorized ${targetCorp.name} to construct a ${getItemData(shipId)?.name}. Buy orders placed.`, 'system');
+            } else {
+                 addConsoleMessage(`${targetCorp.name} has sufficient materials. Construction of ${getItemData(shipId)?.name} will begin shortly.`, 'system');
+            }
+
+            return newCorps;
+        });
+    
+    }, [addConsoleMessage]);
+
+    const handleAssignCorpConquest = useCallback((corpId: string, systemId: number) => {
+         setGlobalCorporationData(corps => {
+            const newCorps = JSON.parse(JSON.stringify(corps));
+            const targetCorp = newCorps[corpId];
+            if (targetCorp) {
+                targetCorp.playerAssignedGoal = {
+                    action: 'conquer_system',
+                    targetId: systemId
+                };
+            }
+            return newCorps;
+        });
+        addConsoleMessage(`You have assigned ${CORPORATION_DATA[corpId].name} to conquer the ${getSystemById(systemId)?.name} system.`, 'system');
+    }, [addConsoleMessage]);
 
 
     // --- MAIN GAME LOGIC (SOLAR SYSTEM) IN USEEFFECT ---
     useEffect(() => {
-        if (gameState === GameState.GALAX_MAP || !mountRef.current) return;
+        if (gameState === GameState.GALAX_MAP || !mountRef.current || !ventureModel) return;
 
         // --- SETUP ---
         const { current: three } = threeRef;
@@ -1327,6 +1809,7 @@ export default function App() {
             gameData.asteroids = [];
             gameData.stations = [];
             gameData.enemies = [];
+            gameData.npcMiners = [];
             gameData.wrecks = [];
             gameData.drones = [];
             gameData.navObjects = [];
@@ -1344,7 +1827,7 @@ export default function App() {
             return station;
         };
 
-        const createSolarSystem = (systemId: number) => {
+        const createSolarSystem = (systemId: number, ventureModel: THREE.Group | null) => {
             clearScene();
             const systemData = SOLAR_SYSTEM_DATA[systemId] || { name: (getSystemById(systemId) || {}).name || 'Uncharted System', star: { color: 0xffffff, diameter: 1000000 }, planets: [] };
             const systemGalaxyData = getSystemById(systemId);
@@ -1415,9 +1898,105 @@ export default function App() {
             newEnemies.forEach(enemy => {
                 gameData.navObjects.push({ name: enemy.object3D.userData.name, type: 'pirate', object3D: enemy.object3D });
             });
+            
+            // Create in-system NPC miners based on the global data store
+            const systemMinersInfo = Object.values(globalNpcMinerDataRef.current).filter(m => m.systemId === systemId);
+            const stationObject = gameData.stations.find(s => s.userData.name === systemData.station?.name);
+            const UNDOCK_DISTANCE = 800;
+            
+            systemMinersInfo.forEach(minerInfo => {
+                if (!stationObject) return;
+
+                const shipData = SHIP_DATA[minerInfo.shipName];
+                if (!shipData) return;
+
+                const fitting = {
+                    high: [ 'mod_miner_i', 'mod_miner_i', null ],
+                    medium: [ null, null, null ],
+                    low: [ null ],
+                    rig: [],
+                };
+        
+                const minerModules = fitting.high.map(id => id ? getItemData(id) as Module : null).filter((m): m is Module => m !== null);
+                const baseModuleYield = minerModules.reduce((total, mod) => total + (mod?.attributes?.miningYield || 0), 0);
+                let yieldMultiplier = 1.0;
+                shipData.bonuses.forEach(bonus => {
+                    if (bonus.type === 'miningYield' && bonus.flat) yieldMultiplier += bonus.value / 100;
+                });
+                const yieldPerCycle = baseModuleYield * yieldMultiplier;
+        
+                let minerMesh: THREE.Object3D;
+                if (ventureModel) {
+                    minerMesh = ventureModel.clone();
+                    minerMesh.scale.setScalar(12);
+                    minerMesh.rotation.x = Math.PI / 2;
+                    minerMesh.rotation.y = Math.PI;
+                } else {
+                    const minerGeometry = new THREE.TetrahedronGeometry(25, 0);
+                    const minerMaterial = new THREE.MeshStandardMaterial({ color: 0xffff00, metalness: 0.7, roughness: 0.4 });
+                    minerMesh = new THREE.Mesh(minerGeometry, minerMaterial);
+                }
+                
+                minerMesh.uuid = minerInfo.uuid; // Link object to data
+                minerMesh.visible = minerInfo.state !== 'IDLE' && minerInfo.state !== 'DOCKING';
+                
+                const hp = {
+                    shield: shipData.attributes.shield, maxShield: shipData.attributes.shield,
+                    armor: shipData.attributes.armor, maxArmor: shipData.attributes.armor,
+                    hull: shipData.attributes.hull, maxHull: shipData.attributes.hull,
+                };
+
+                minerMesh.userData = {
+                    type: 'npc_miner',
+                    name: minerInfo.name,
+                    shipName: shipData.name,
+                    hp: hp,
+                };
+                three.scene.add(minerMesh);
+
+                const undockPosition = stationObject.position.clone().add(new THREE.Vector3(
+                    (Math.random() - 0.5) * UNDOCK_DISTANCE,
+                    (Math.random() - 0.5) * (UNDOCK_DISTANCE / 2),
+                    (Math.random() - 0.5) * UNDOCK_DISTANCE,
+                ));
+
+                const miner: NpcMiner = {
+                    object3D: minerMesh,
+                    shipData,
+                    fitting,
+                    hp,
+                    cargo: JSON.parse(JSON.stringify(minerInfo.cargo)), // Deep copy cargo
+                    state: minerInfo.state,
+                    miningTarget: null,
+                    miningCycleTimer: 0,
+                    idleTimer: minerInfo.state === 'IDLE' ? (minerInfo.stateTimer || 30) : 0,
+                    homeStation: stationObject,
+                    undockPosition,
+                    yieldPerCycle,
+                };
+                gameData.npcMiners.push(miner);
+                gameData.navObjects.push({ name: miner.object3D.userData.name, type: 'npc_miner', object3D: miner.object3D });
+            });
 
 
             three.player = new THREE.Object3D();
+            const currentShipId = playerStateRef.current.currentShipId;
+
+            if (currentShipId === 'ship_venture' && ventureModel) {
+                const playerShipModel = ventureModel.clone();
+                playerShipModel.rotation.x = Math.PI / 2;
+                playerShipModel.rotation.y = Math.PI; // Point forward (-Z)
+                playerShipModel.scale.setScalar(12);
+                three.player.add(playerShipModel);
+            } else {
+                // Placeholder for other ships (e.g., rookie ship)
+                const placeholderGeom = new THREE.ConeGeometry(15, 40, 4);
+                const placeholderMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.7, roughness: 0.4 });
+                const placeholderModel = new THREE.Mesh(placeholderGeom, placeholderMat);
+                placeholderModel.rotation.x = Math.PI / 2; // Point forward
+                three.player.add(placeholderModel);
+            }
+            
             if (loadedPositionRef.current && loadedQuaternionRef.current) {
                 three.player.position.copy(loadedPositionRef.current);
                 three.player.quaternion.copy(loadedQuaternionRef.current);
@@ -1429,12 +2008,13 @@ export default function App() {
                 three.player.position.set(0, 0, systemData.planets && systemData.planets.length > 0 ? systemData.planets[systemData.planets.length - 1]!.distance + 4000 : 5000);
             }
             three.player.add(three.solarSystemCamera);
-            three.solarSystemCamera.position.set(0, 0, 0);
+            // Third-person camera offset
+            three.solarSystemCamera.position.set(0, 50, 200);
             three.scene.add(three.player);
         };
         
         if(activeSystemId) {
-            createSolarSystem(activeSystemId);
+            createSolarSystem(activeSystemId, ventureModel);
         }
 
         // --- UPDATE LOOPS ---
@@ -1649,7 +2229,7 @@ export default function App() {
                 }
             }
 
-            const targetableObjects = [...gameData.asteroids, ...gameData.stations, ...gameData.enemies.map(e => e.object3D), ...gameData.wrecks];
+            const targetableObjects = [...gameData.asteroids, ...gameData.stations, ...gameData.enemies.map(e => e.object3D), ...gameData.npcMiners.map(m => m.object3D), ...gameData.wrecks];
             let closestObject = null;
             let minDistance = 2000;
             const tempVec = new THREE.Vector3();
@@ -1685,7 +2265,7 @@ export default function App() {
                 let content = `<strong>${data.name}</strong>`;
                 if (data.type === 'asteroid') {
                     content += `<br>Quantity: ${data.oreQuantity}`;
-                } else if (data.type === 'pirate') {
+                } else if (data.type === 'pirate' || data.type === 'npc_miner') {
                     content += `<br>Ship: ${data.shipName}`;
                 } else if (data.type === 'wreck') {
                     content += `<br>Contains loot`;
@@ -1743,6 +2323,8 @@ export default function App() {
         // --- ANIMATION LOOP ---
         let animationFrameId: number;
         let lastNavUpdate = 0;
+        let lastGlobalNpcUpdate = 0;
+
         const animate = (time: number) => {
             animationFrameId = requestAnimationFrame(animate);
             const delta = three.clock.getDelta();
@@ -1757,12 +2339,52 @@ export default function App() {
                  if (isWarping() && three.player) updateWarp(three.player, delta);
                  
                 const currentShipId = (mount.parentElement as HTMLElement)?.dataset.shipid;
-                if (currentShipId) {
+                if (currentShipId && activeSystemId) {
                     const currentShip = SHIP_DATA[currentShipId];
                     if (currentShip) {
                         updateSolarSystem(delta, currentShip);
                         updateDrones(delta, currentDroneStatus);
                         updateEnemies(gameData.enemies, three.player, delta);
+
+                        const soldPayloads = updateNpcMiners(gameData.npcMiners, gameData.asteroids, delta, activeSystemId);
+                        if (soldPayloads.length > 0) {
+                            let totalValue = 0;
+                            const soldOres: Record<string, number> = {};
+                            soldPayloads.forEach(payload => {
+                                for (const oreId in payload.soldCargo.materials) {
+                                    const quantity = payload.soldCargo.materials[oreId];
+                                    const oreData = getItemData(oreId);
+                                    totalValue += (oreData?.basePrice || 0) * quantity;
+                                    soldOres[oreData?.name || 'Unknown Ore'] = (soldOres[oreData?.name || 'Unknown Ore'] || 0) + quantity;
+                                }
+                            });
+
+                            if (totalValue > 0) {
+                                setGlobalCorporationData(prevCorps => {
+                                    const newCorps = JSON.parse(JSON.stringify(prevCorps));
+                                    if (newCorps['corp_mining_services']) {
+                                        newCorps['corp_mining_services'].isk += totalValue;
+                                    }
+                                    return newCorps;
+                                });
+                                const oreSummary = Object.entries(soldOres).map(([name, qty]) => `${qty.toLocaleString()} ${name}`).join(', ');
+                                addConsoleMessage(`Mining Services corp earned ${totalValue.toLocaleString(undefined, {maximumFractionDigits:0})} ISK from selling: ${oreSummary}.`, 'system');
+                            }
+
+                            setStationMarketData(prevData => {
+                                const newData = JSON.parse(JSON.stringify(prevData));
+                                soldPayloads.forEach(payload => {
+                                    const mineralsProduced = reprocessOreCargo(payload.soldCargo);
+                                    const stationMarket = newData[payload.stationId] || {};
+                                    for (const mineralId in mineralsProduced) {
+                                        stationMarket[mineralId] = (stationMarket[mineralId] || 0) + mineralsProduced[mineralId];
+                                    }
+                                    newData[payload.stationId] = stationMarket;
+                                });
+                                return newData;
+                            });
+                        }
+
 
                         const now = performance.now();
                         if (now - lastEnemyAttackTimeRef.current > ENEMY_ATTACK_COOLDOWN) {
@@ -1797,11 +2419,53 @@ export default function App() {
                     updateNavPanelData();
                     lastNavUpdate = performance.now();
                 }
+
+                if (performance.now() - lastGlobalNpcUpdate > 1000) { // Update global data once per second
+                    lastGlobalNpcUpdate = performance.now();
+                    if (gameData.npcMiners.length > 0) {
+                        let hasChanged = false;
+                        const updatedData = { ...globalNpcMinerDataRef.current };
+                        gameData.npcMiners.forEach(miner => {
+                            const uuid = miner.object3D.uuid;
+                            const existingData = updatedData[uuid];
+                            if (!existingData) return;
+
+                            const miningTargetName = miner.miningTarget?.userData.ore?.name || null;
+
+                            if (existingData.state !== miner.state || JSON.stringify(existingData.cargo) !== JSON.stringify(miner.cargo) || existingData.miningTargetName !== miningTargetName) {
+                                updatedData[uuid] = {
+                                    ...existingData,
+                                    state: miner.state,
+                                    cargo: JSON.parse(JSON.stringify(miner.cargo)), // deep copy
+                                    miningTargetName: miningTargetName,
+                                };
+                                hasChanged = true;
+                            }
+                        });
+                        if (hasChanged) {
+                            globalNpcMinerDataRef.current = updatedData;
+                            setGlobalNpcMinerData(updatedData);
+                        }
+                    }
+                }
             }
             if(three.scene && three.currentCamera) three.renderer.render(three.scene, three.currentCamera);
         };
 
         // --- EVENT HANDLERS ---
+        const onMouseWheel = (event: WheelEvent) => {
+            if (!three.solarSystemCamera) return;
+            event.preventDefault();
+
+            const zoomSpeed = 0.2;
+            let newZ = three.solarSystemCamera.position.z + event.deltaY * zoomSpeed;
+            
+            const minZoom = 50;
+            const maxZoom = 800;
+            newZ = THREE.MathUtils.clamp(newZ, minZoom, maxZoom);
+
+            three.solarSystemCamera.position.z = newZ;
+        };
         const onWindowResize = () => {
             if (!three.currentCamera || !three.renderer) return;
             const aspect = window.innerWidth / window.innerHeight;
@@ -1902,6 +2566,7 @@ export default function App() {
         document.addEventListener('touchmove', onTouchMove, { passive: false });
         document.addEventListener('touchend', onTouchEnd);
         document.addEventListener('touchcancel', onTouchEnd);
+        document.addEventListener('wheel', onMouseWheel, { passive: false });
         
         animate(0);
         
@@ -1917,10 +2582,11 @@ export default function App() {
             document.removeEventListener('touchmove', onTouchMove);
             document.removeEventListener('touchend', onTouchEnd);
             document.removeEventListener('touchcancel', onTouchEnd);
+            document.removeEventListener('wheel', onMouseWheel);
             if (mountRef.current && three.renderer) mountRef.current.removeChild(three.renderer.domElement);
             three.renderer?.dispose();
         };
-    }, [gameState, activeSystemId, addConsoleMessage]); 
+    }, [gameState, activeSystemId, addConsoleMessage, ventureModel]); 
 
     // Effect for handling docking via 'Enter' key
     useEffect(() => {
@@ -2148,12 +2814,20 @@ export default function App() {
                 <DockedView
                     playerState={playerState}
                     setPlayerState={setPlayerState}
+                    // FIX: `onUndock` was not defined. It has been corrected to `handleUndock`.
                     onUndock={handleUndock}
                     stationId={stationId}
                     stationName={stationName}
                     systemId={activeSystemId}
                     isHomeStation={stationId === playerState.homeStationId}
                     onSetHomeStation={handleSetHomeStation}
+                    globalNpcMinerData={globalNpcMinerData}
+                    stationMarketData={stationMarketData}
+                    setStationMarketData={setStationMarketData}
+                    globalCorporationData={globalCorporationData}
+                    globalNpcTraderData={globalNpcTraderData}
+                    onAuthorizeCorpShipConstruction={handleAuthorizeCorpShipConstruction}
+                    onAssignCorpConquest={handleAssignCorpConquest}
                 />
             )}
 

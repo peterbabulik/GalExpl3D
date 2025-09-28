@@ -1,6 +1,7 @@
 // GeminiAgent.tsx
 import React, { useState, useEffect } from 'react';
 // import { GoogleGenAI, Type } from "@google/genai";
+import { generateCombatMission } from './missions';
 
 import type { AgentData, MissionData, PlayerState } from './types';
 // FIX: `ORE_DATA` is not exported from `./constants`. It should be imported from `./ores`.
@@ -44,41 +45,39 @@ export const AgentInterface: React.FC<{
             return;
         }
 
-        const generateMockData = () => {
+        const generateMissions = () => {
             setIsLoading(true);
             setError(null);
 
-            // Artificial delay to simulate loading
-            setTimeout(() => {
-                try {
-                    const system = GALAXY_DATA.systems.find(s => s.id === systemId);
-                    const systemData = SOLAR_SYSTEM_DATA[systemId];
-                    if (!system || !systemData) throw new Error("System data not found.");
+            try {
+                const system = GALAXY_DATA.systems.find(s => s.id === systemId);
+                const systemData = SOLAR_SYSTEM_DATA[systemId];
+                if (!system || !systemData) throw new Error("System data not found.");
 
-                    const mockAgent: AgentData = {
-                        id: stationId,
-                        name: `Agent ${stationName.split(' ')[0]}`,
-                        corporation: "Local Mining Inc.",
-                        backstory: `We keep the wheels of industry turning in ${system.name}. Help us meet our quotas, pilot, and you'll be well compensated.`
-                    };
-                    setCachedAgent(mockAgent);
+                const newAgent: AgentData = {
+                    id: stationId,
+                    name: `Agent ${stationName.split(' ')[0]}`,
+                    corporation: "Local Mining Inc.",
+                    backstory: `We keep the wheels of industry turning in ${system.name}. Help us meet our quotas, pilot, and you'll be well compensated.`
+                };
+                setCachedAgent(newAgent);
 
-                    const beltData = ASTEROID_BELT_TYPES[systemData.asteroidBeltType || 'sparse'];
+                const missions: MissionData[] = [];
+                
+                // Generate Mining Missions (if applicable)
+                const beltData = ASTEROID_BELT_TYPES[systemData.asteroidBeltType || 'sparse'];
+                if (beltData) {
                     const availableOreIds = Object.keys(beltData.oreDistribution);
-
-                    const mockMissions: MissionData[] = availableOreIds.slice(0, 3).map((oreId, index) => {
+                    const miningMissions: MissionData[] = availableOreIds.slice(0, 2).map((oreId, index) => {
                         const oreData = getItemData(oreId);
-                        const quantity = (Math.floor(Math.random() * 5) + 1) * 2000;
-                        // FIX: Explicitly type the mission object to ensure its properties
-                        // match the MissionData interface, particularly for literal types
-                        // like 'type' and 'status'.
+                        const quantity = (Math.floor(Math.random() * 5) + 1) * 1000;
                         const mission: MissionData = {
-                            id: `${stationId}-${index}-${Date.now()}`,
-                            agent: mockAgent,
+                            id: `${stationId}-mining-${index}-${Date.now()}`,
+                            agent: newAgent,
                             stationId,
                             type: 'mining',
                             title: `Mining Op: ${oreData?.name}`,
-                            description: `We have a client who needs a large shipment of ${oreData?.name}. Bring me ${quantity.toLocaleString()} units and I will reward you handsomely.`,
+                            description: `We have a client who needs a shipment of ${oreData?.name}. Bring me ${quantity.toLocaleString()} units.`,
                             objectives: { [oreId]: quantity },
                             rewards: {
                                 isk: Math.ceil(quantity * (oreData?.basePrice || 10) * 1.25)
@@ -87,21 +86,32 @@ export const AgentInterface: React.FC<{
                         };
                         return mission;
                     }).filter(m => m.objectives && Object.keys(m.objectives).length > 0);
-
-                    setCachedMissions(mockMissions);
-                    if (mockMissions.length > 0) {
-                        setSelectedMission(mockMissions[0]);
-                    }
-                } catch (e) {
-                     console.error("Failed to generate mock agent data:", e);
-                     setError("Failed to load agent data. Please try again later.");
-                } finally {
-                    setIsLoading(false);
+                    missions.push(...miningMissions);
                 }
-            }, 500);
+
+                // Generate Combat Missions
+                for (let i = 0; i < 2; i++) {
+                    const combatMission = generateCombatMission(newAgent, stationId, systemId);
+                    if (combatMission) {
+                        missions.push(combatMission);
+                    }
+                }
+                
+                setCachedMissions(missions);
+                if (activeMissionForThisAgent) {
+                    setSelectedMission(activeMissionForThisAgent);
+                } else if (missions.length > 0) {
+                    setSelectedMission(missions[0]);
+                }
+            } catch (e) {
+                 console.error("Failed to generate mission data:", e);
+                 setError("Failed to load mission data. Please try again later.");
+            } finally {
+                setIsLoading(false);
+            }
         };
 
-        generateMockData();
+        generateMissions();
 
     }, [isOpen, stationId, systemId, stationName, cachedAgent, cachedMissions, setCachedAgent, setCachedMissions, activeMissionForThisAgent]);
 
@@ -123,8 +133,15 @@ export const AgentInterface: React.FC<{
     
     let canComplete = false;
     if (activeMissionForThisAgent) {
-        const hangar = playerState.stationHangars[stationId];
-        canComplete = hangar ? hasMaterials(hangar.materials, activeMissionForThisAgent.objectives) : false;
+        if (activeMissionForThisAgent.type === 'mining') {
+            const hangar = playerState.stationHangars[stationId];
+            canComplete = hangar ? hasMaterials(hangar.materials, activeMissionForThisAgent.objectives) : false;
+        } else if (activeMissionForThisAgent.type === 'combat') {
+            const objectiveKey = Object.keys(activeMissionForThisAgent.objectives)[0];
+            const required = activeMissionForThisAgent.objectives[objectiveKey];
+            const current = activeMissionForThisAgent.progress?.[objectiveKey] || 0;
+            canComplete = current >= required;
+        }
     }
     
     const missionList = activeMissionForThisAgent ? [activeMissionForThisAgent] : (cachedMissions || []);
@@ -167,12 +184,28 @@ export const AgentInterface: React.FC<{
                             <div className="bg-black/20 p-3 rounded mb-4 space-y-2">
                                 <div>
                                     <h5 className="text-lg font-semibold text-yellow-400">Objective:</h5>
-                                    {Object.entries(missionToShow.objectives).map(([oreId, qty]) => (
-                                        <div key={oreId} className="flex items-center gap-2">
-                                            <ItemIcon item={getItemData(oreId)} size="small" />
-                                            <span className="m-0">{getItemData(oreId)?.name}: {qty.toLocaleString()} units</span>
-                                        </div>
-                                    ))}
+                                     {missionToShow.locationSystemId && (
+                                        <p className="m-0 text-gray-400">
+                                            Location: {GALAXY_DATA.systems.find(s => s.id === missionToShow.locationSystemId)?.name || 'Unknown System'}
+                                        </p>
+                                    )}
+                                    {Object.entries(missionToShow.objectives).map(([key, qty]) => {
+                                        let objectiveText = `${key}: ${qty.toLocaleString()}`;
+                                        if (missionToShow.type === 'mining') {
+                                            objectiveText = `${getItemData(key)?.name || key}: ${qty.toLocaleString()} units`;
+                                        } else if (missionToShow.type === 'combat') {
+                                            const parts = key.split('_'); // e.g., destroy_pirate_small
+                                            const pirateType = parts.length > 2 ? parts[2] : 'pirate';
+                                            objectiveText = `Destroy ${pirateType} pirates: ${qty.toLocaleString()}`;
+                                        }
+                                        
+                                        return (
+                                            <div key={key} className="flex items-center gap-2">
+                                                {missionToShow.type === 'mining' && <ItemIcon item={getItemData(key)} size="small" />}
+                                                <span className="m-0">{objectiveText}</span>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                                 <div>
                                     <h5 className="text-lg font-semibold text-green-400">Reward:</h5>

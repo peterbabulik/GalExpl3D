@@ -13,7 +13,7 @@ export enum GameState {
 
 export type ItemCategory = 'Ship' | 'Module' | 'Material' | 'Blueprint' | 'Ore' | 'Mineral' | 'Component' | 'Consumable' | 'Ammunition' | 'Structure' | 'Drone';
 
-export type ConsoleMessageType = 'damage_in' | 'damage_out' | 'mining' | 'loot' | 'repair' | 'system' | 'bounty';
+export type ConsoleMessageType = 'damage_in' | 'damage_out' | 'mining' | 'loot' | 'repair' | 'system' | 'bounty' | 'gemini';
 
 // --- UI & SCENE DATA ---
 
@@ -34,7 +34,7 @@ export interface Target {
     uuid: string;
     object3D: THREE.Object3D;
     name: string;
-    type: 'star' | 'planet' | 'station' | 'asteroid' | 'pirate' | 'wreck';
+    type: 'star' | 'planet' | 'station' | 'asteroid' | 'pirate' | 'wreck' | 'npc_miner';
     distance: number;
     oreQuantity?: number;
     shipName?: string;
@@ -63,7 +63,7 @@ export interface DockingData {
 
 export interface NavObject {
     name: string;
-    type: 'star' | 'planet' | 'station' | 'asteroid' | 'pirate' | 'wreck';
+    type: 'star' | 'planet' | 'station' | 'asteroid' | 'pirate' | 'wreck' | 'npc_miner';
     object3D: THREE.Object3D;
     parent?: THREE.Object3D;
 }
@@ -71,7 +71,7 @@ export interface NavObject {
 export interface NavPanelItem {
     uuid: string;
     name: string;
-    type: 'star' | 'planet' | 'station' | 'asteroid' | 'pirate' | 'wreck';
+    type: 'star' | 'planet' | 'station' | 'asteroid' | 'pirate' | 'wreck' | 'npc_miner';
     distance: number;
     distanceStr: string;
     parentUUID?: string;
@@ -137,6 +137,145 @@ export interface PlayerState {
     activeMissions: MissionData[];
 }
 
+// FIX: Added the missing GeminiPlayerState interface which was causing an import error.
+export interface GeminiPlayerState {
+    name: string;
+    isk: number;
+    currentShipId: string;
+    shipCargo: StorageLocation;
+    currentSystemId: number;
+    isDocked: boolean;
+    dockedStationId: string | null;
+    currentGoal: string;
+    lastActionTimestamp: number;
+}
+
+
+// --- NPC MINER ---
+
+export type NpcMinerState = 'UNDOCKING' | 'TRAVELING_TO_BELT' | 'MINING' | 'RETURNING_TO_STATION' | 'DOCKING' | 'IDLE';
+
+export interface NpcMiner {
+    object3D: THREE.Object3D;
+    shipData: Ship;
+    fitting: ShipFitting;
+    hp: {
+        shield: number; maxShield: number;
+        armor: number; maxArmor: number;
+        hull: number; maxHull: number;
+    };
+    cargo: StorageLocation;
+    state: NpcMinerState;
+    miningTarget: THREE.Object3D | null;
+    miningCycleTimer: number; // in seconds
+    idleTimer: number; // in seconds
+    homeStation: THREE.Object3D;
+    undockPosition: THREE.Vector3;
+    yieldPerCycle: number;
+}
+
+export interface NpcMinerInfo {
+    uuid: string;
+    systemId: number;
+    homeStationId: string;
+    name: string;
+    shipName: string;
+    state: NpcMinerState;
+    cargo: StorageLocation;
+    miningTargetName: string | null;
+    stateTimer?: number;
+}
+
+// --- NPC TRADER & CORPORATIONS ---
+
+export interface DeployedShip {
+    shipId: string;
+    shipType: 'combat' | 'mining';
+    systemId: number;
+    state: 'claiming' | 'mining' | 'returning';
+    cargo?: StorageLocation;
+    returnTimer?: number; // seconds
+}
+
+// FIX: Added StrategicGoal interface to define the structure for corporation AI objectives.
+export interface StrategicGoal {
+    action: 'build_ship' | 'conquer_system' | 'idle';
+    targetId: string;
+    reasoning: string;
+}
+
+export interface CorporationData {
+    id: string;
+    name: string;
+    isk: number;
+    homeStationId: string;
+    claimedSystemId: number | null;
+    assetHangar: StorageLocation;
+    shipsInSpace: DeployedShip[];
+    claimTimer: number; // seconds
+    buyOrders?: Record<string, number>;
+    buildQueue?: string[];
+    // FIX: Added optional strategicGoal property to store AI directives for corporations.
+    strategicGoal?: StrategicGoal;
+    playerAssignedGoal?: {
+        action: 'conquer_system';
+        targetId: number;
+    };
+}
+
+export type NpcTraderState = 'IDLE' | 'ANALYZING_MARKET' | 'TRAVELING_TO_BUY' | 'BUYING' | 'TRAVELING_TO_SELL' | 'SELLING';
+
+export type NpcSupplyTraderState = 'IDLE' | 'CHECKING_ORDERS' | 'TRAVELING_TO_BUY' | 'BUYING' | 'TRAVELING_TO_DELIVER' | 'DELIVERING';
+
+export interface StationInfo {
+    id: string;
+    name: string;
+    systemName: string;
+    systemId: number;
+    x: number;
+    y: number;
+}
+
+export interface TradeRoute {
+    itemId: string;
+    buyStation: StationInfo;
+    sellStation: StationInfo;
+    buyPrice: number;
+    sellPrice: number;
+    profitPerUnit: number;
+    profitPerM3: number;
+}
+
+export interface NpcTraderData {
+    uuid: string;
+    corporationId: string;
+    name: string;
+    isk: number;
+    shipId: string;
+    cargo: StorageLocation;
+    state: NpcTraderState;
+    currentSystemId: number;
+    currentLocationId: string | null; // stationId
+    currentRoute: TradeRoute | null;
+    stateTimer: number; // seconds
+}
+
+export interface NpcSupplyTraderData {
+    uuid: string;
+    corporationId: string;
+    name: string;
+    shipId: string;
+    cargo: StorageLocation;
+    state: NpcSupplyTraderState;
+    currentSystemId: number;
+    currentLocationId: string | null; // stationId
+    currentTarget: {
+        materialId: string;
+        quantity: number;
+        buyStationId: string;
+    } | null;
+    stateTimer: number; // seconds
+}
 
 // --- AGENTS & MISSIONS ---
 
@@ -161,6 +300,7 @@ export interface MissionData {
         items?: { id: string; quantity: number }[];
     };
     status: 'offered' | 'accepted';
+    locationSystemId?: number;
 }
 
 
@@ -201,7 +341,7 @@ export interface StationData {
     orbitsPlanetIndex: number;
     orbitDistance: number;
     orbitHeight?: number;
-    type?: 'standard' | 'testing';
+    type?: 'standard' | 'testing' | 'npc_command';
 }
 
 export interface SolarSystemData {
@@ -418,3 +558,7 @@ export interface ManufacturingFacility {
     maxJobs: number;
     specialization?: string;
 }
+
+// --- MARKET ---
+
+export type StationMarketData = Record<string, Record<string, number>>;
