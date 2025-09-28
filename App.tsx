@@ -526,7 +526,7 @@ export default function App() {
     // --- Load 3D Models ---
     useEffect(() => {
         const loader = new GLTFLoader();
-        loader.load('/venture.glb', (gltf) => {
+        loader.load('https://github.com/peterbabulik/GalExpl3D/blob/f24c66499e7a7703d0a12e8420c3ccda2e738caa/venture.glb', (gltf) => {
             setVentureModel(gltf.scene);
         }, undefined, (error) => {
             console.error('An error happened while loading the Venture model:', error);
